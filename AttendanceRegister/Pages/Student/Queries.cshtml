@@ -1,0 +1,75 @@
+@page
+@model AttendanceRegister.Pages.Student.QueriesModel
+@{
+    ViewData["Title"] = "My queries";
+}
+
+<header class="page-head">
+    <h1 class="page-head__title">Queries</h1>
+    <p class="page-head__lede">Tell your lecturer a session is wrong, and follow what happens to it.</p>
+</header>
+
+<div class="grid grid--split">
+    <section class="card">
+        <h2 class="card__title">Raise a query</h2>
+
+        <partial name="_ValidationSummary" model="ModelState" />
+
+        <form method="post" class="form">
+            <div class="field">
+                <label class="label" asp-for="Input.LectureId">Session</label>
+                <select class="input" asp-for="Input.LectureId" asp-items="Model.SessionChoices">
+                    <option value="">Choose a session…</option>
+                </select>
+                <span class="field__error" asp-validation-for="Input.LectureId"></span>
+            </div>
+
+            <div class="field">
+                <label class="label" asp-for="Input.RequestedStatus">
+                    It should say
+                    <span class="hint" tabindex="0" data-tip="Excused covers sickness or an approved absence. Your lecturer decides whether to accept it.">?</span>
+                </label>
+                <select class="input" asp-for="Input.RequestedStatus" asp-items="Model.StatusChoices"></select>
+            </div>
+
+            <div class="field">
+                <label class="label" asp-for="Input.Reason">What happened</label>
+                <textarea class="input input--area" asp-for="Input.Reason" rows="4"
+                          placeholder="I signed the sheet on 9 March but the register shows me absent."></textarea>
+                <span class="field__error" asp-validation-for="Input.Reason"></span>
+                <p class="field__help">At least 10 characters. One open query per session.</p>
+            </div>
+
+            <button type="submit" class="btn">Send query</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2 class="card__title">Your queries</h2>
+
+        @if (Model.Queries.Count == 0)
+        {
+            <p class="empty">You have not raised any queries.</p>
+        }
+        else
+        {
+            <ol class="timeline">
+                @foreach (var query in Model.Queries)
+                {
+                    <li class="timeline__item">
+                        <div class="timeline__head">
+                            <span class="num">@(query.Lecture?.SessionDate.ToString("d MMM yyyy") ?? "Session removed")</span>
+                            <span class="pill pill--@(query.Status.ToString().ToLowerInvariant())">@query.Status</span>
+                        </div>
+                        <p class="timeline__body">Asked for: <strong>@query.RequestedStatus</strong>. @query.Reason</p>
+                        @if (!string.IsNullOrWhiteSpace(query.ResolutionNote))
+                        {
+                            <p class="timeline__note">Lecturer: @query.ResolutionNote</p>
+                        }
+                        <p class="muted num">Sent @query.SubmittedAtUtc.ToLocalTime().ToString("d MMM yyyy HH:mm")</p>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</div>

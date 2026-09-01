@@ -1,0 +1,61 @@
+@startuml AttendanceImportSequence
+title Uploading a past register — three queries regardless of class size
+
+actor Lecturer
+participant "Import page" as Page
+participant "AttendanceImportService" as Service
+participant "ParserFactory" as Factory
+participant "DelimitedAttendanceFileParser" as Parser
+database "SQLite" as Db
+
+Lecturer -> Page : choose file, "Check the file"
+activate Page
+Page -> Page : validate size and extension
+Page -> Service : ImportAsync(request, ValidateOnly = true)
+activate Service
+
+Service -> Factory : Resolve(fileName)
+Factory --> Service : parser for .csv
+Service -> Parser : ParseAsync(stream)
+activate Parser
+Parser -> Parser : detect delimiter from header
+Parser -> Parser : map name / number / date columns once
+loop each data line
+  Parser -> Parser : split, copy only session columns
+end
+Parser --> Service : AttendanceSheet + issues
+deactivate Parser
+
+alt sheet has fatal issues
+  Service --> Page : result with errors, nothing written
+else sheet is readable
+  Service -> Db : SELECT student number -> id
+  Service -> Db : SELECT session date -> id
+  Service -> Db : SELECT existing records for those sessions
+  Service -> Service : compare every cell in memory
+  Service --> Page : counts of would-add / would-change
+end
+deactivate Service
+
+Page --> Lecturer : preview, nothing saved
+deactivate Page
+
+Lecturer -> Page : "Import it"
+activate Page
+Page -> Service : ImportAsync(request, ValidateOnly = false)
+activate Service
+Service -> Db : BEGIN TRANSACTION
+Service -> Db : INSERT missing lectures, SaveChanges
+Service -> Db : INSERT missing students, SaveChanges
+Service -> Service : AutoDetectChanges = false
+loop each row x each session column
+  Service -> Service : dictionary lookup, Revise() or new record
+end
+Service -> Db : AddRange + SaveChanges + ImportBatch
+Service -> Db : COMMIT
+Service --> Page : committed result
+deactivate Service
+Page --> Lecturer : counts and any per-cell warnings
+deactivate Page
+
+@enduml

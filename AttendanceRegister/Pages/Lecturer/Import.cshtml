@@ -1,0 +1,149 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.ImportModel
+@{
+    ViewData["Title"] = "Upload register";
+}
+
+<header class="page-head">
+    <h1 class="page-head__title">Upload a register</h1>
+    <p class="page-head__lede">Bring in attendance for past lectures from a spreadsheet. Nothing is written until you say so.</p>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+<div class="grid grid--split">
+    <section class="card">
+        <h2 class="card__title">Choose a file</h2>
+
+        <form method="post" enctype="multipart/form-data" class="form">
+            <div class="field">
+                <label class="label" asp-for="Upload">
+                    Spreadsheet
+                    <span class="hint" tabindex="0" data-tip="One row per student. First row holds the column headings, one date per session column.">?</span>
+                </label>
+                <input class="input input--file" asp-for="Upload" type="file" accept="@Model.AcceptList" />
+                <p class="field__help">Accepted: @(string.Join(", ", Model.SupportedExtensions)). Up to 10 MB.</p>
+                <span class="field__error" asp-validation-for="Upload"></span>
+            </div>
+
+            <label class="check">
+                <input asp-for="CreateMissingStudents" type="checkbox" />
+                <span>Add students who are in the file but not yet enrolled</span>
+            </label>
+
+            <label class="check">
+                <input asp-for="CreateMissingLectures" type="checkbox" />
+                <span>Create sessions for dates that do not exist yet</span>
+            </label>
+
+            <div class="form__actions">
+                <button type="submit" class="btn btn--ghost" asp-page-handler="Validate">Check the file</button>
+                <button type="submit" class="btn" asp-page-handler="Import">Import it</button>
+            </div>
+            <p class="muted">Check the file first to see exactly what would change. Importing the same file twice is safe.</p>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2 class="card__title">What the file should look like</h2>
+        <div class="table-wrap">
+            <table class="table table--sample">
+                <thead>
+                <tr><th>Student Name</th><th>Student No</th><th>2026/02/25</th><th>2026/03/02</th></tr>
+                </thead>
+                <tbody>
+                <tr><td>Thandi Mokoena</td><td>MKNTHA001</td><td>1</td><td>0</td></tr>
+                <tr><td>Sipho Dlamini</td><td>DLMSIP002</td><td>1</td><td>1</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <ul class="bullets">
+            <li>@AttendanceRegister.Services.Import.AttendanceValueMap.Describe()</li>
+            <li>Semicolons, commas and tabs are detected from the header row.</li>
+            <li>Unreadable cells are reported by row and date, and skipped one at a time.</li>
+            <li>Two rows with the same student number stop the whole import, so nothing lands half-done.</li>
+        </ul>
+    </section>
+</div>
+
+@if (Model.Result is not null)
+{
+    var result = Model.Result;
+    <section class="card @(result.HasErrors ? "card--error" : result.Committed ? "card--ok" : "")">
+        <div class="card__head">
+            <h2 class="card__title">
+                @(result.Committed ? "Imported" : result.HasErrors ? "Nothing was imported" : "Preview only — nothing was written")
+            </h2>
+            <p class="muted">@result.FileName</p>
+        </div>
+
+        <div class="grid grid--5">
+            <div class="stat stat--sm">
+                <p class="stat__label">Rows read</p>
+                <p class="stat__value">@result.RowsRead</p>
+            </div>
+            <div class="stat stat--sm">
+                <p class="stat__label">Session columns</p>
+                <p class="stat__value">@result.SessionColumns</p>
+            </div>
+            <div class="stat stat--sm">
+                <p class="stat__label">@(result.Committed ? "Records added" : "Would add")</p>
+                <p class="stat__value">@result.RecordsCreated</p>
+            </div>
+            <div class="stat stat--sm">
+                <p class="stat__label">@(result.Committed ? "Records changed" : "Would change")</p>
+                <p class="stat__value">@result.RecordsUpdated</p>
+            </div>
+            <div class="stat stat--sm">
+                <p class="stat__label">Already correct</p>
+                <p class="stat__value">@result.RecordsUnchanged</p>
+            </div>
+        </div>
+
+        @if (result.StudentsCreated > 0 || result.LecturesCreated > 0)
+        {
+            <p class="muted">
+                @(result.Committed ? "Added" : "Would add")
+                @result.StudentsCreated new @(result.StudentsCreated == 1 ? "student" : "students")
+                and @result.LecturesCreated new @(result.LecturesCreated == 1 ? "session" : "sessions").
+            </p>
+        }
+
+        @if (result.Issues.Count == 0)
+        {
+            <p class="empty">No problems found in the file.</p>
+        }
+        else
+        {
+            <h3 class="subhead">@result.ErrorCount @(result.ErrorCount == 1 ? "error" : "errors") and @result.WarningCount @(result.WarningCount == 1 ? "warning" : "warnings")</h3>
+            <div class="table-wrap table-wrap--tall">
+                <table class="table table--issues" data-table-tools data-table-id="import-issues">
+                    <thead>
+                    <tr>
+                        <th scope="col" data-filter data-label="Type">Type</th>
+                        <th scope="col">Row</th>
+                        <th scope="col" data-lock>Where</th>
+                        <th scope="col">What to do</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var issue in result.Issues)
+                    {
+                        <tr class="@(issue.Severity == ImportIssueSeverity.Error ? "row--error" : "row--warning")">
+                            <td>@(issue.Severity == ImportIssueSeverity.Error ? "Error" : "Warning")</td>
+                            <td class="num" data-sort="@issue.RowNumber">@(issue.RowNumber == 0 ? "—" : issue.RowNumber.ToString())</td>
+                            <td class="num">@issue.Location</td>
+                            <td>@issue.Message</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (result.Committed)
+        {
+            <p class="form__actions"><a class="btn" asp-page="/Lecturer/Index">See the overview</a></p>
+        }
+    </section>
+}

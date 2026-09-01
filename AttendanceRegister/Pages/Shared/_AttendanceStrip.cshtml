@@ -1,0 +1,11 @@
+@model IEnumerable<SessionCell>
+@{
+    var cells = Model.ToList();
+}
+<div class="strip" role="img" aria-label="Attendance across @cells.Count recorded sessions">
+    @foreach (var cell in cells)
+    {
+        var tip = cell.SessionDate.ToString("ddd d MMM yyyy") + " — " + cell.Label;
+        <span class="strip__cell @cell.CssModifier" data-tip="@tip" aria-hidden="true"></span>
+    }
+</div>

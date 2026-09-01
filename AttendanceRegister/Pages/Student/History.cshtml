@@ -1,0 +1,47 @@
+@page
+@model AttendanceRegister.Pages.Student.HistoryModel
+@{
+    ViewData["Title"] = "My attendance";
+}
+
+<header class="page-head">
+    <h1 class="page-head__title">My attendance</h1>
+    <p class="page-head__lede">Every session, newest first, and how each one was captured.</p>
+</header>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="empty">No sessions have been captured yet.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="table" data-table-tools data-table-id="my-attendance">
+            <thead>
+            <tr>
+                <th scope="col" data-lock>Session</th>
+                <th scope="col">Topic</th>
+                <th scope="col" data-filter data-label="Status">Status</th>
+                <th scope="col" data-filter data-label="Captured by">Captured by</th>
+                <th scope="col" data-label="Recorded at">Recorded</th>
+                <th scope="col" data-nosort><span class="sr-only">Action</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <th scope="row" class="num" data-sort="@row.SortKey">@row.SessionDate.ToString("ddd d MMM yyyy")</th>
+                    <td>@(string.IsNullOrWhiteSpace(row.Topic) ? "—" : row.Topic)</td>
+                    <td data-value="@row.StatusLabel"><span class="pill pill--@(row.StatusModifier)">@row.StatusLabel</span></td>
+                    <td class="muted">@row.SourceLabel</td>
+                    <td class="muted num" data-sort="@row.RecordedSortKey">@(row.RecordedLocal?.ToString("d MMM yyyy HH:mm") ?? "—")</td>
+                    <td class="cell--action">
+                        <a class="link" asp-page="/Student/Queries" asp-route-lectureId="@row.LectureId">Query this</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

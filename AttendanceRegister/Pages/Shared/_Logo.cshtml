@@ -1,0 +1,21 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<BrandingOptions> Branding
+@model string
+@{
+    // Model carries the placement: "mast", "hero", "card" or "footer".
+    var placement = string.IsNullOrWhiteSpace(Model) ? "mast" : Model;
+    var options = Branding.Value;
+
+    var classes = $"logo logo--{placement}";
+    if (placement == "mast" && options.MastheadModifier.Length > 0)
+    {
+        classes += " " + options.MastheadModifier;
+    }
+
+    // Decorative in the chrome, meaningful on the landing and sign-in pages.
+    var decorative = placement is "mast" or "footer";
+}
+<img class="@classes"
+     src="@Url.Content("~" + options.LogoPath)"
+     alt="@(decorative ? string.Empty : options.LogoAlt)"
+     aria-hidden="@(decorative ? "true" : null)" />

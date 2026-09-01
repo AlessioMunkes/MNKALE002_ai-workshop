@@ -1,0 +1,72 @@
+@page "{lectureId:int}"
+@model AttendanceRegister.Pages.Lecturer.RegisterModel
+@{
+    ViewData["Title"] = "Mark register";
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@Model.SessionDateText</p>
+        <h1 class="page-head__title">@(string.IsNullOrWhiteSpace(Model.Topic) ? "Mark the register" : Model.Topic)</h1>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Sessions">Back to sessions</a>
+    </div>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+<form method="post">
+    <input type="hidden" asp-for="LectureId" />
+
+    <section class="card">
+        <div class="card__head">
+            <h2 class="card__title">@Model.Rows.Count students</h2>
+            <div class="bulk">
+                <span class="muted">Set everyone to</span>
+                <button type="submit" class="btn btn--sm btn--ghost" asp-page-handler="MarkAll"
+                        name="bulkStatus" value="Present">Present</button>
+                <button type="submit" class="btn btn--sm btn--ghost" asp-page-handler="MarkAll"
+                        name="bulkStatus" value="Absent">Absent</button>
+            </div>
+        </div>
+
+        <div class="table-wrap table-wrap--tall">
+            <table class="table table--register" data-table-tools data-table-id="register">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Student</th>
+                    <th scope="col">Number</th>
+                    <th scope="col" data-nosort data-label="Status">Status</th>
+                    <th scope="col" data-filter data-label="Last captured by">Last captured by</th>
+                </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    <tr>
+                        <th scope="row">
+                            @Model.Rows[i].DisplayName
+                            <input type="hidden" asp-for="Rows[i].StudentId" />
+                            <input type="hidden" asp-for="Rows[i].DisplayName" />
+                            <input type="hidden" asp-for="Rows[i].StudentNumber" />
+                        </th>
+                        <td class="num">@Model.Rows[i].StudentNumber</td>
+                        @* data-value="" keeps the option labels inside this select
+                           out of the search index, which would otherwise match every row. *@
+                        <td data-value="">
+                            <select class="input input--sm" asp-for="Rows[i].Status" asp-items="Model.StatusChoices"></select>
+                        </td>
+                        <td class="muted">@Model.SourceLabel(Model.Rows[i].StudentId)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form__actions">
+            <button type="submit" class="btn">Save the register</button>
+            <p class="muted">Every change records who made it and when. Searching or filtering only hides rows &mdash; every student is still saved.</p>
+        </div>
+    </section>
+</form>

@@ -1,0 +1,61 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.StudentNewModel
+@{
+    ViewData["Title"] = "Add a student";
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">Class list</p>
+        <h1 class="page-head__title">Add a student</h1>
+        <p class="page-head__lede">For someone who joined after the class list was uploaded.</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Students">Back to class list</a>
+    </div>
+</header>
+
+<section class="panel panel--narrow rise">
+    <partial name="_ValidationSummary" model="ModelState" />
+
+    <form method="post" class="form">
+        <div class="field">
+            <label class="label" asp-for="Input.StudentNumber">
+                Student number
+                <span class="hint" tabindex="0" data-tip="Stored in upper case, so mknTHA001 and MKNTHA001 are the same student.">?</span>
+            </label>
+            <input class="input" asp-for="Input.StudentNumber" autofocus placeholder="MKNTHA001" autocomplete="off" />
+            <span class="field__error" asp-validation-for="Input.StudentNumber"></span>
+        </div>
+
+        <div class="field">
+            <label class="label" asp-for="Input.DisplayName">Full name</label>
+            <input class="input" asp-for="Input.DisplayName" placeholder="Thandi Mokoena" autocomplete="off" />
+            <span class="field__error" asp-validation-for="Input.DisplayName"></span>
+        </div>
+
+        <div class="field">
+            <label class="label" asp-for="Input.Email">
+                Email
+                <span class="hint" tabindex="0" data-tip="Leave this blank to build it from the student number and the configured domain.">?</span>
+            </label>
+            <input class="input" asp-for="Input.Email" type="email" placeholder="@Model.EmailPlaceholder" autocomplete="off" />
+            <p class="field__help">Optional. Left blank, it becomes the student number at @(Model.EmailDomain).</p>
+            <span class="field__error" asp-validation-for="Input.Email"></span>
+        </div>
+
+        <div class="field">
+            <label class="label" asp-for="Input.Password">Starting password</label>
+            <span class="password-field" data-password-toggle>
+                <input class="input" asp-for="Input.Password" type="password" autocomplete="new-password" />
+            </span>
+            <p class="field__help">At least @Model.MinimumPasswordLength characters. Give it to the student directly &mdash; there is no reset by email.</p>
+            <span class="field__error" asp-validation-for="Input.Password"></span>
+        </div>
+
+        <div class="form__actions">
+            <button type="submit" class="btn">Add to the course</button>
+            <a class="link" asp-page="/Lecturer/Import">or upload a spreadsheet instead</a>
+        </div>
+    </form>
+</section>

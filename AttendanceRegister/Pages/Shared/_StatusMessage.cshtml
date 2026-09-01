@@ -1,0 +1,8 @@
+@{
+    var message = TempData["Flash"] as string;
+    var kind = TempData["FlashKind"] as string ?? "info";
+}
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert--@(kind)" role="status">@message</div>
+}

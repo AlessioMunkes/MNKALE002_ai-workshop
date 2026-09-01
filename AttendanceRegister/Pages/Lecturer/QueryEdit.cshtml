@@ -1,0 +1,101 @@
+@page "{queryId:int}"
+@model AttendanceRegister.Pages.Lecturer.QueryEditModel
+@{
+    ViewData["Title"] = "Edit a query";
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@Model.SessionText</p>
+        <h1 class="page-head__title">@Model.StudentName</h1>
+        <p class="page-head__lede">
+            <span class="pill pill--@(Model.StatusModifier)">@Model.StatusText</span>
+            @if (Model.RaisedByLecturer)
+            {
+                <span class="muted">&middot; recorded by a lecturer on the student's behalf</span>
+            }
+            @if (Model.Amended)
+            {
+                <span class="muted">&middot; edited since it was raised</span>
+            }
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Queries">Back to queries</a>
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Register" asp-route-lectureId="@Model.LectureId">Open the register</a>
+    </div>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+<div class="grid grid--split">
+    <section class="card rise">
+        <h2 class="card__title">What the query says</h2>
+
+        <form method="post" asp-page-handler="Save" class="form">
+            <div class="field">
+                <label class="label" asp-for="Input.RequestedStatus">It should say</label>
+                <select class="input" asp-for="Input.RequestedStatus" asp-items="Model.StatusChoices"></select>
+            </div>
+
+            <div class="field">
+                <label class="label" asp-for="Input.Reason">Reason</label>
+                <textarea class="input input--area" asp-for="Input.Reason" rows="5"></textarea>
+                <span class="field__error" asp-validation-for="Input.Reason"></span>
+                <p class="field__help">At least 10 characters. Editing does not change the register on its own.</p>
+            </div>
+
+            <div class="form__actions">
+                <button type="submit" class="btn">Save changes</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card rise rise--2">
+        <h2 class="card__title">Outcome</h2>
+
+        @if (Model.IsOpen)
+        {
+            <form method="post" class="form">
+                <div class="field">
+                    <label class="label" asp-for="Note">Note for the student (optional)</label>
+                    <input class="input" asp-for="Note" maxlength="1000"
+                           placeholder="Checked against the signed sheet for that lecture." />
+                </div>
+                <div class="form__actions">
+                    <button type="submit" class="btn" asp-page-handler="Approve">Approve and update the register</button>
+                    <button type="submit" class="btn btn--ghost" asp-page-handler="Reject">Reject</button>
+                </div>
+                <p class="muted">Approving rewrites the register to the status above and records that the change came from a query.</p>
+            </form>
+        }
+        else
+        {
+            <p class="query__outcome">
+                @Model.StatusText@(Model.ResolvedText)
+                @(string.IsNullOrWhiteSpace(Model.ResolutionNote) ? "" : " — " + Model.ResolutionNote)
+            </p>
+
+            <form method="post" asp-page-handler="Reopen">
+                <button type="submit" class="btn btn--ghost">Reopen this query</button>
+            </form>
+            <p class="muted">
+                Reopening leaves the register exactly as it is. Undoing an approved change is a separate
+                decision, made on the register screen where you can see what it does.
+            </p>
+        }
+
+        <hr class="rule" />
+
+        <details class="danger">
+            <summary>Delete this query</summary>
+            <p class="muted">
+                The query disappears from the student's list. Any register change it already caused stays,
+                with its own audit trail. There is no undo.
+            </p>
+            <form method="post" asp-page-handler="Delete">
+                <button type="submit" class="btn btn--danger btn--sm">Yes, delete it</button>
+            </form>
+        </details>
+    </section>
+</div>

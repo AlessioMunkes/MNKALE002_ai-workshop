@@ -1,0 +1,108 @@
+@startuml AttendanceRegisterDomain
+title INF3003W Attendance Register — domain model
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+
+abstract class User {
+  - int Id
+  - string Email
+  - string DisplayName
+  - string PasswordHash
+  - bool IsActive
+  + {abstract} UserRole Role
+  + SetPasswordHash(hash)
+}
+
+class Student {
+  - string StudentNumber
+  + UserRole Role = Student
+  + {static} NormaliseStudentNumber(value)
+}
+
+class Lecturer {
+  - string StaffNumber
+  + UserRole Role = Lecturer
+}
+
+class Course {
+  - int Id
+  - string Code
+  - string Title
+  - int MinimumAttendancePercent
+  + UpdateThreshold(percent)
+}
+
+class Lecture {
+  - int Id
+  - DateOnly SessionDate
+  - TimeOnly StartTime
+  - TimeOnly EndTime
+  - string Topic
+  - string Venue
+  - string CheckInCode
+  - DateTime CheckInClosesAtUtc
+  + bool IsCheckInOpen
+  + OpenCheckIn(duration, codeFactory) : string
+  + CloseCheckIn()
+  + CodeMatches(candidate) : bool
+}
+
+class AttendanceRecord {
+  - int Id
+  - AttendanceStatus Status
+  - AttendanceSource Source
+  - DateTime RecordedAtUtc
+  - int RecordedByUserId
+  - string Note
+  + bool IsCounted
+  + Revise(status, source, actor, note) : bool
+}
+
+class AttendanceQuery {
+  - int Id
+  - AttendanceStatus RequestedStatus
+  - string Reason
+  - QueryStatus Status
+  - string ResolutionNote
+  + bool IsOpen
+  + Approve(lecturerId, note)
+  + Reject(lecturerId, note)
+}
+
+class ImportBatch {
+  - string FileName
+  - DateTime ImportedAtUtc
+  - int RowsRead
+  - int RecordsCreated
+  - int RecordsUpdated
+}
+
+enum UserRole { Student, Lecturer }
+enum AttendanceStatus { Absent, Present, Late, Excused }
+enum AttendanceSource { SelfCheckIn, SpreadsheetImport, LecturerEdit, QueryResolution }
+enum QueryStatus { Open, Approved, Rejected }
+
+User <|-- Student
+User <|-- Lecturer
+
+Course "1" *-- "many" Lecture
+Lecture "1" *-- "many" AttendanceRecord
+Student "1" *-- "many" AttendanceRecord
+Student "1" *-- "many" AttendanceQuery
+Lecture "1" -- "many" AttendanceQuery
+
+AttendanceRecord ..> AttendanceStatus
+AttendanceRecord ..> AttendanceSource
+AttendanceQuery ..> QueryStatus
+User ..> UserRole
+
+note right of AttendanceRecord
+  Unique index on (LectureId, StudentId).
+  Revise() returns false when nothing
+  changed, which is how the importer
+  separates "updated" from "already
+  correct" without a second pass.
+end note
+
+@enduml

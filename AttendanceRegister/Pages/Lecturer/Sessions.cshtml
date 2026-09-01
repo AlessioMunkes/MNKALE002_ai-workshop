@@ -1,0 +1,123 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.SessionsModel
+@{
+    ViewData["Title"] = "Sessions";
+}
+
+<header class="page-head">
+    <h1 class="page-head__title">Sessions</h1>
+    <p class="page-head__lede">Open check-in during a lecture, or go into a session to mark students by hand.</p>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+@if (Model.OpenSession is not null)
+{
+    <section class="card card--live">
+        <p class="eyebrow">Check-in is open</p>
+        <div class="live">
+            <div>
+                <p class="live__date">@Model.OpenSession.SessionDate.ToString("dddd d MMMM yyyy")</p>
+                <p class="muted">Closes at @Model.OpenCloseTime &middot; students type this code on their dashboard</p>
+            </div>
+            <p class="live__code">@Model.OpenSession.CheckInCode</p>
+            <form method="post" asp-page-handler="Close">
+                <input type="hidden" name="lectureId" value="@Model.OpenSession.Id" />
+                <button type="submit" class="btn btn--ghost">Close check-in</button>
+            </form>
+        </div>
+    </section>
+}
+
+<div class="grid grid--split">
+    <section class="card">
+        <h2 class="card__title">Add a session</h2>
+        <form method="post" asp-page-handler="Create" class="form">
+            <div class="field-row">
+                <div class="field">
+                    <label class="label" asp-for="NewSession.SessionDate">Date</label>
+                    <input class="input" asp-for="NewSession.SessionDate" type="date" asp-format="{0:yyyy-MM-dd}" />
+                    <span class="field__error" asp-validation-for="NewSession.SessionDate"></span>
+                </div>
+                <div class="field">
+                    <label class="label" asp-for="NewSession.StartTime">Starts</label>
+                    <input class="input" asp-for="NewSession.StartTime" type="time" asp-format="{0:HH:mm}" />
+                </div>
+                <div class="field">
+                    <label class="label" asp-for="NewSession.EndTime">Ends</label>
+                    <input class="input" asp-for="NewSession.EndTime" type="time" asp-format="{0:HH:mm}" />
+                </div>
+            </div>
+            <div class="field">
+                <label class="label" asp-for="NewSession.Topic">Topic</label>
+                <input class="input" asp-for="NewSession.Topic" placeholder="Normalisation workshop" />
+            </div>
+            <div class="field">
+                <label class="label" asp-for="NewSession.Venue">Venue</label>
+                <input class="input" asp-for="NewSession.Venue" placeholder="Leslie Social 2A" />
+            </div>
+            <button type="submit" class="btn">Add session</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2 class="card__title">
+            All sessions
+            <span class="hint" tabindex="0" data-tip="Only one session can accept check-ins at a time. Opening a second one closes the first.">?</span>
+        </h2>
+
+        @if (Model.Sessions.Count == 0)
+        {
+            <p class="empty">No sessions yet. Add one on the left, or upload a past register.</p>
+        }
+        else
+        {
+            <div class="table-wrap table-wrap--tall">
+                <table class="table" data-table-tools data-table-id="sessions">
+                    <thead>
+                    <tr>
+                        <th scope="col" data-lock>Date</th>
+                        <th scope="col">Topic</th>
+                        <th scope="col" data-label="Captured">Captured</th>
+                        <th scope="col" data-filter data-label="Check-in">Check-in</th>
+                        <th scope="col" data-nosort><span class="sr-only">Actions</span></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var session in Model.Sessions)
+                    {
+                        var sessionKey = session.SessionDate.ToString("yyyy-MM-dd");
+                        <tr>
+                            <th scope="row" class="num" data-sort="@sessionKey">@session.SessionDate.ToString("ddd d MMM yyyy")</th>
+                            <td>@(string.IsNullOrWhiteSpace(session.Topic) ? "—" : session.Topic)</td>
+                            <td class="num" data-sort="@Model.RecordedCount(session.Id)">@Model.RecordedCount(session.Id) / @Model.Enrolled</td>
+                            <td data-value="@(session.IsCheckInOpen ? "Open" : "Closed")">
+                                @if (session.IsCheckInOpen)
+                                {
+                                    <span class="pill pill--present">Open &middot; @session.CheckInCode</span>
+                                }
+                                else
+                                {
+                                    <span class="muted">Closed</span>
+                                }
+                            </td>
+                            <td class="cell--action">
+                                <a class="link" asp-page="/Lecturer/Register" asp-route-lectureId="@session.Id">Mark register</a>
+                                @if (!session.IsCheckInOpen)
+                                {
+                                    <form method="post" asp-page-handler="Open" class="inline-form">
+                                        <input type="hidden" name="lectureId" value="@session.Id" />
+                                        <input type="number" name="minutes" value="15" min="1" max="240"
+                                               class="input input--tiny" aria-label="Minutes to keep check-in open" />
+                                        <button type="submit" class="btn btn--sm btn--ghost">Open check-in</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

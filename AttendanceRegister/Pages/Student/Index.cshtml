@@ -1,0 +1,90 @@
+@page
+@model AttendanceRegister.Pages.Student.IndexModel
+@{
+    ViewData["Title"] = "My dashboard";
+    var summary = Model.Summary;
+}
+
+<header class="page-head">
+    <p class="eyebrow">@summary.StudentNumber</p>
+    <h1 class="page-head__title">@summary.DisplayName</h1>
+</header>
+
+<div class="grid grid--dash">
+    <section class="card card--figure @(summary.MeetsThreshold ? "is-good" : "is-risk")">
+        <p class="figure__label">
+            Attendance
+            <span class="hint" tabindex="0" data-tip="Counted over the @summary.SessionsHeld sessions that have been captured. Sessions nobody has captured yet are ignored.">?</span>
+        </p>
+        <p class="figure__value">@(summary.Percentage.ToString("0.#"))<span class="figure__unit">&percnt;</span></p>
+        <p class="figure__caption">@summary.SessionsAttended of @summary.SessionsHeld sessions</p>
+
+        <div class="meter" role="img" aria-label="@(summary.Percentage.ToString("0.#")) percent attendance against a @(summary.MinimumPercent) percent requirement">
+            <div class="meter__fill" style="width:@(Math.Min(100, summary.Percentage).ToString("0.#"))%"></div>
+            <div class="meter__threshold" style="left:@(summary.MinimumPercent)%"></div>
+        </div>
+
+        @if (summary.MeetsThreshold)
+        {
+            <p class="figure__note">Above the @summary.MinimumPercent&percnt; requirement. You can miss @summary.SessionsCanStillMiss more @(summary.SessionsCanStillMiss == 1 ? "session" : "sessions") and stay there.</p>
+        }
+        else
+        {
+            <p class="figure__note figure__note--warn">Below the @summary.MinimumPercent&percnt; requirement. Attending the next @summary.SessionsNeededToRecover @(summary.SessionsNeededToRecover == 1 ? "session" : "sessions") would bring you back above it.</p>
+        }
+    </section>
+
+    <section class="card">
+        <h2 class="card__title">Record your attendance</h2>
+
+        @if (Model.OpenSession is null)
+        {
+            <p class="empty">
+                No session is open for check-in right now. The box appears here as soon as your lecturer
+                starts one. If you attended a session that is marked wrong, <a asp-page="/Student/Queries">raise a query</a>.
+            </p>
+        }
+        else
+        {
+            <p class="muted">Open now: <strong>@Model.OpenSession.SessionDate.ToString("dddd d MMMM yyyy")</strong>@(string.IsNullOrWhiteSpace(Model.OpenSession.Venue) ? "" : $" in {Model.OpenSession.Venue}")</p>
+
+            <partial name="_ValidationSummary" model="ModelState" />
+
+            <form method="post" class="form form--inline">
+                <div class="field">
+                    <label class="label" asp-for="Code">
+                        Session code
+                        <span class="hint" tabindex="0" data-tip="Six characters from the screen. Case does not matter, and the code never contains O, I, L, 0 or 1.">?</span>
+                    </label>
+                    <input class="input input--code" asp-for="Code" maxlength="8" autocomplete="off"
+                           spellcheck="false" placeholder="ABC234" />
+                    <span class="field__error" asp-validation-for="Code"></span>
+                </div>
+                <button type="submit" class="btn">Check in</button>
+            </form>
+        }
+    </section>
+</div>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Your sessions so far</h2>
+        <a class="link" asp-page="/Student/History">See the full list</a>
+    </div>
+
+    @if (summary.Cells.Count == 0)
+    {
+        <p class="empty">Nothing has been captured yet. Your first session will show up here.</p>
+    }
+    else
+    {
+        <partial name="_AttendanceStrip" model="summary.Cells" />
+        <ul class="legend">
+            <li><span class="strip__cell is-present"></span> Present</li>
+            <li><span class="strip__cell is-late"></span> Late</li>
+            <li><span class="strip__cell is-excused"></span> Excused</li>
+            <li><span class="strip__cell is-absent"></span> Absent</li>
+            <li><span class="strip__cell is-unrecorded"></span> Not captured</li>
+        </ul>
+    }
+</section>

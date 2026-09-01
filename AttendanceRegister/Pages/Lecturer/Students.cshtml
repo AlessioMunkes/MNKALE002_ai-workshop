@@ -1,0 +1,119 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.StudentsModel
+@{
+    ViewData["Title"] = "Class list";
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@Model.CourseCode</p>
+        <h1 class="page-head__title">Class list</h1>
+        <p class="page-head__lede">Every student's attendance at a glance. Click a row for their full history.</p>
+    </div>
+    <div class="page-head__actions">
+        @if (Model.BelowThreshold > 0)
+        {
+            <a class="btn btn--ghost btn--sm" href="@Model.BulkEmailHref">Email the @Model.BelowThreshold below @Model.MinimumPercent&percnt;</a>
+        }
+        <a class="btn btn--sm" asp-page="/Lecturer/StudentNew">Add a student</a>
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Export">Download register</a>
+    </div>
+</header>
+
+<div class="grid grid--4">
+    <div class="stat rise">
+        <p class="stat__label">Enrolled</p>
+        <p class="stat__value">@Model.Rows.Count</p>
+    </div>
+    <div class="stat rise rise--2">
+        <p class="stat__label">Sessions captured</p>
+        <p class="stat__value">@Model.SessionsHeld</p>
+    </div>
+    <div class="stat rise rise--3">
+        <p class="stat__label">Class average</p>
+        <p class="stat__value">@(Model.AverageText)<span class="stat__unit">&percnt;</span></p>
+    </div>
+    <div class="stat rise rise--4 @(Model.BelowThreshold > 0 ? "is-attention" : "")">
+        <p class="stat__label">
+            Below @Model.MinimumPercent&percnt;
+            <span class="hint" tabindex="0" data-tip="Filter the Standing column to see only these students.">?</span>
+        </p>
+        <p class="stat__value">@Model.BelowThreshold</p>
+    </div>
+</div>
+
+<section class="card">
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="empty">
+            Nobody is enrolled yet.
+            <a asp-page="/Lecturer/StudentNew">Add a student</a> or
+            <a asp-page="/Lecturer/Import">upload a register</a>.
+        </p>
+    }
+    else
+    {
+        @if (Model.BulkEmailTruncated)
+        {
+            <p class="muted">The group draft carries the first @MailTo.MaxBulkRecipients addresses. Write to the rest from the Email links in the last column.</p>
+        }
+
+        <div class="table-wrap table-wrap--tall">
+            <table class="table" data-table-tools data-table-id="class-list">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Student</th>
+                    <th scope="col">Number</th>
+                    <th scope="col" data-nosort data-label="Attendance pattern">Pattern</th>
+                    <th scope="col">Attended</th>
+                    <th scope="col">Rate</th>
+                    <th scope="col" data-filter data-label="Standing">Standing</th>
+                    <th scope="col" data-label="Margin">Margin</th>
+                    <th scope="col" data-label="Last present">Last present</th>
+                    <th scope="col" data-filter data-label="Queries">Queries</th>
+                    <th scope="col" data-nosort><span class="sr-only">Contact</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    var detailUrl = Url.Page("/Lecturer/StudentDetail", new { studentId = row.Summary.StudentId });
+                    var draft = AttendanceMessages.ForStudent(row.Summary, Model.CourseCode);
+                    var mailHref = MailTo.One(row.Summary.Email, draft.Subject, draft.Body);
+                    <tr data-href="@detailUrl">
+                        <th scope="row">
+                            <a asp-page="/Lecturer/StudentDetail" asp-route-studentId="@row.Summary.StudentId">@row.Summary.DisplayName</a>
+                            @if (!row.IsActive)
+                            {
+                                <span class="pill pill--absent">Inactive</span>
+                            }
+                        </th>
+                        <td class="num">@row.Summary.StudentNumber</td>
+                        <td><partial name="_AttendanceStripMini" model="row.Summary.Cells" /></td>
+                        <td class="num" data-sort="@row.Summary.SessionsAttended">@row.Summary.SessionsAttended / @row.Summary.SessionsHeld</td>
+                        <td data-value="@(row.Summary.Percentage.ToString("0.#"))">
+                            <partial name="_RateBar" model="row.Summary" />
+                        </td>
+                        <td>@row.Standing</td>
+                        <td class="num" data-sort="@row.MarginSortKey">@row.Margin</td>
+                        <td class="num" data-sort="@row.LastAttendedSortKey">@(row.LastAttendedOn?.ToString("d MMM yyyy") ?? "—")</td>
+                        <td data-sort="@row.OpenQueries" data-value="@(row.OpenQueries > 0 ? "Open" : "None")">
+                            @if (row.OpenQueries > 0)
+                            {
+                                <a class="pill pill--open" asp-page="/Lecturer/Queries" asp-route-filter="Open">@row.OpenQueries open</a>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                        <td class="cell--action" data-value="">
+                            <a class="link" href="@mailHref" title="Write to @row.Summary.Email">Email</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

@@ -1,0 +1,51 @@
+@page
+@model AttendanceRegister.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<section class="panel panel--narrow rise">
+    <header class="page-head page-head--centred">
+        <partial name="_Logo" model="@("card")" />
+        <h1 class="page-head__title">Sign in</h1>
+        <p class="page-head__lede">Students use a student number. Staff use an email address.</p>
+    </header>
+
+    <partial name="_ValidationSummary" model="ModelState" />
+
+    <form method="post" class="form">
+        <div class="field">
+            <label class="label" asp-for="Input.Identifier">
+                Student number or email
+                <span class="hint" tabindex="0" data-tip="A student number such as MKNTHA001, or a staff email address.">?</span>
+            </label>
+            <input class="input" asp-for="Input.Identifier" autocomplete="username" autofocus placeholder="MKNTHA001" />
+            <span class="field__error" asp-validation-for="Input.Identifier"></span>
+        </div>
+
+        <div class="field">
+            <label class="label" asp-for="Input.Password">Password</label>
+            <span class="password-field" data-password-toggle>
+                <input class="input" asp-for="Input.Password" type="password" autocomplete="current-password" />
+            </span>
+            <span class="field__error" asp-validation-for="Input.Password"></span>
+        </div>
+
+        <label class="check">
+            <input asp-for="Input.RememberMe" type="checkbox" />
+            <span>Keep me signed in on this device</span>
+        </label>
+
+        <button type="submit" class="btn btn--block">Sign in</button>
+    </form>
+
+    @if (Model.ShowDemoCredentials)
+    {
+        <aside class="note">
+            <p class="note__title">Demonstration accounts</p>
+            <p>Lecturer: <code>@Model.DemoLecturerEmail</code> / <code>@Model.DemoLecturerPassword</code></p>
+            <p>Student: <code>@Model.DemoStudentNumber</code> / <code>@Model.DemoStudentPassword</code></p>
+            <p class="muted">Shown only while running in Development. Change these before anyone else uses the system.</p>
+        </aside>
+    }
+</section>

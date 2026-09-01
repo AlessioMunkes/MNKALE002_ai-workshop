@@ -1,0 +1,16 @@
+@page
+@model AttendanceRegister.Pages.ErrorModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<section class="card card--flat card--centred">
+    <p class="eyebrow">Error @Model.ErrorCode</p>
+    <h1 class="page-head__title">@Model.Headline</h1>
+    <p>@Model.Explanation</p>
+    @if (!string.IsNullOrEmpty(Model.RequestId))
+    {
+        <p class="muted">Reference: <code>@Model.RequestId</code></p>
+    }
+    <p><a class="btn" asp-page="/Index">Back to the start</a></p>
+</section>

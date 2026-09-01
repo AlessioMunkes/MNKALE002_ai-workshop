@@ -1,0 +1,151 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.IndexModel
+@{
+    ViewData["Title"] = "Overview";
+    var overview = Model.Overview;
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@overview.CourseCode</p>
+        <h1 class="page-head__title">Attendance overview</h1>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Export">Download register</a>
+        <a class="btn btn--sm" asp-page="/Lecturer/Sessions">Manage sessions</a>
+    </div>
+</header>
+
+<div class="grid grid--4">
+    <div class="stat">
+        <p class="stat__label">Enrolled</p>
+        <p class="stat__value">@overview.Enrolled</p>
+    </div>
+    <div class="stat">
+        <p class="stat__label">Sessions captured</p>
+        <p class="stat__value">@overview.SessionsHeld</p>
+    </div>
+    <div class="stat">
+        <p class="stat__label">
+            Class average
+            <span class="hint" tabindex="0" data-tip="The mean of each session's attendance rate, across captured sessions only.">?</span>
+        </p>
+        <p class="stat__value">@(Model.AverageText)<span class="stat__unit">&percnt;</span></p>
+    </div>
+    <div class="stat @(overview.OpenQueries > 0 ? "is-attention" : "")">
+        <p class="stat__label">Open queries</p>
+        <p class="stat__value">@overview.OpenQueries</p>
+        @if (overview.OpenQueries > 0)
+        {
+            <a class="link" asp-page="/Lecturer/Queries">Review them</a>
+        }
+    </div>
+</div>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Attendance per session</h2>
+        <p class="muted">Dashed line marks the @overview.MinimumPercent&percnt; requirement.</p>
+    </div>
+
+    @if (Model.Bars.Count == 0)
+    {
+        <p class="empty">No sessions have been captured yet. <a asp-page="/Lecturer/Import">Upload a register</a> or open check-in for a session.</p>
+    }
+    else
+    {
+        <div class="chart">
+            @* Each group is wrapped in <g> deliberately: Razor reserves the bare
+               <text> tag, so an SVG <text> element must sit inside other markup
+               rather than at a markup-transition point. *@
+            <svg viewBox="0 0 @Model.ChartWidth @Model.ChartHeight" role="img"
+                 aria-label="Column chart of attendance percentage for each captured session"
+                 preserveAspectRatio="xMidYMid meet">
+
+                <g class="chart__grid-group">
+                    @foreach (var line in Model.GridLines)
+                    {
+                        <g>
+                            <line class="chart__grid" x1="@Model.PlotLeft" x2="@Model.PlotRight" y1="@line.Y" y2="@line.Y"></line>
+                            <text class="chart__axis" x="@(Model.PlotLeft - 8)" y="@(line.Y + 4)" text-anchor="end">@line.Label</text>
+                        </g>
+                    }
+                </g>
+
+                <line class="chart__threshold" x1="@Model.PlotLeft" x2="@Model.PlotRight"
+                      y1="@Model.ThresholdY" y2="@Model.ThresholdY"></line>
+
+                <g class="chart__bars">
+                    @foreach (var bar in Model.Bars)
+                    {
+                        <rect class="chart__bar @(bar.BelowThreshold ? "is-low" : "")"
+                              x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height" rx="2">
+                            <title>@bar.Tip</title>
+                        </rect>
+                    }
+                </g>
+
+                <g class="chart__ticks">
+                    @foreach (var tick in Model.Ticks)
+                    {
+                        <g>
+                            <text class="chart__axis" x="@tick.X" y="@Model.LabelY" text-anchor="middle">@tick.Label</text>
+                        </g>
+                    }
+                </g>
+            </svg>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Below the requirement</h2>
+        <div class="card__head-actions">
+            <p class="muted">@overview.AtRiskStudents.Count of @overview.Enrolled &middot; <a class="link" asp-page="/Lecturer/Students">whole class list</a></p>
+            @if (overview.AtRiskStudents.Count > 0)
+            {
+                <a class="btn btn--ghost btn--sm" href="@Model.BulkEmailHref">Email all of them</a>
+            }
+        </div>
+    </div>
+
+    @if (overview.AtRiskStudents.Count == 0)
+    {
+        <p class="empty">Every student is above @overview.MinimumPercent&percnt;.</p>
+    }
+    else
+    {
+        <div class="table-wrap table-wrap--tall">
+            <table class="table" data-table-tools data-table-id="at-risk">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Student</th>
+                    <th scope="col">Number</th>
+                    <th scope="col">Attended</th>
+                    <th scope="col">Rate</th>
+                    <th scope="col" data-label="Sessions to recover">Sessions needed to recover</th>
+                    <th scope="col" data-nosort><span class="sr-only">Contact</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var student in overview.AtRiskStudents)
+                {
+                    var draft = AttendanceMessages.ForStudent(student, overview.CourseCode);
+                    var mailHref = MailTo.One(student.Email, draft.Subject, draft.Body);
+                    <tr>
+                        <th scope="row">@student.DisplayName</th>
+                        <td class="num">@student.StudentNumber</td>
+                        <td class="num" data-sort="@student.SessionsAttended">@student.SessionsAttended / @student.SessionsHeld</td>
+                        <td class="num" data-sort="@(student.Percentage.ToString("0.#"))"><span class="pill pill--absent">@(student.Percentage.ToString("0.#"))&percnt;</span></td>
+                        <td class="num">@student.SessionsNeededToRecover</td>
+                        <td class="cell--action" data-value="">
+                            <a class="link" href="@mailHref" title="Write to @student.Email">Email</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

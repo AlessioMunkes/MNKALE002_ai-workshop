@@ -1,0 +1,11 @@
+@model StudentAttendanceSummary
+@{
+    var width = Math.Min(100, Model.Percentage).ToString("0.#");
+    var low = !Model.MeetsThreshold;
+}
+<span class="rate-bar">
+    <span class="rate-bar__track">
+        <span class="rate-bar__fill @(low ? "is-low" : "")" style="width:@(width)%"></span>
+    </span>
+    <span class="rate-bar__value">@(Model.Percentage.ToString("0.#"))&percnt;</span>
+</span>

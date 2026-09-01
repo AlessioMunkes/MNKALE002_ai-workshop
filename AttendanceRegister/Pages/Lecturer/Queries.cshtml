@@ -1,0 +1,127 @@
+@page
+@model AttendanceRegister.Pages.Lecturer.QueriesModel
+@{
+    ViewData["Title"] = "Queries";
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <h1 class="page-head__title">Attendance queries</h1>
+        <p class="page-head__lede">Approving a query rewrites the register. Rejecting leaves it alone. The student sees your note either way.</p>
+    </div>
+    <nav class="filters" aria-label="Filter queries">
+        <a class="filters__link @(Model.Filter == null ? "is-active" : "")" asp-page="/Lecturer/Queries">All</a>
+        <a class="filters__link @(Model.Filter == QueryStatus.Open ? "is-active" : "")" asp-page="/Lecturer/Queries" asp-route-filter="Open">Open</a>
+        <a class="filters__link @(Model.Filter == QueryStatus.Approved ? "is-active" : "")" asp-page="/Lecturer/Queries" asp-route-filter="Approved">Approved</a>
+        <a class="filters__link @(Model.Filter == QueryStatus.Rejected ? "is-active" : "")" asp-page="/Lecturer/Queries" asp-route-filter="Rejected">Rejected</a>
+    </nav>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+<section class="card rise">
+    <details class="disclosure" open="@(Model.ShowRaiseForm ? "open" : null)">
+        <summary class="disclosure__summary">Record a query a student raised outside the system</summary>
+
+        <form method="post" asp-page-handler="Raise" class="form">
+            <div class="field-row">
+                <div class="field">
+                    <label class="label" asp-for="Raise.StudentId">Student</label>
+                    <select class="input" asp-for="Raise.StudentId" asp-items="Model.StudentChoices">
+                        <option value="">Choose a student…</option>
+                    </select>
+                    <span class="field__error" asp-validation-for="Raise.StudentId"></span>
+                </div>
+
+                <div class="field">
+                    <label class="label" asp-for="Raise.LectureId">Session</label>
+                    <select class="input" asp-for="Raise.LectureId" asp-items="Model.SessionChoices">
+                        <option value="">Choose a session…</option>
+                    </select>
+                    <span class="field__error" asp-validation-for="Raise.LectureId"></span>
+                </div>
+
+                <div class="field">
+                    <label class="label" asp-for="Raise.RequestedStatus">It should say</label>
+                    <select class="input" asp-for="Raise.RequestedStatus" asp-items="Model.StatusChoices"></select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label" asp-for="Raise.Reason">What the student told you</label>
+                <textarea class="input input--area" asp-for="Raise.Reason" rows="3"
+                          placeholder="Emailed on 12 March: signed the sheet but is marked absent."></textarea>
+                <span class="field__error" asp-validation-for="Raise.Reason"></span>
+            </div>
+
+            <div class="form__actions">
+                <button type="submit" class="btn">Record the query</button>
+                <p class="muted">It is marked as recorded on the student's behalf, and the student sees it on their own page.</p>
+            </div>
+        </form>
+    </details>
+</section>
+
+@if (Model.Queries.Count == 0)
+{
+    <p class="empty">Nothing to show here.</p>
+}
+else
+{
+    <ul class="queries">
+        @foreach (var query in Model.Queries)
+        {
+            <li class="card card--query rise">
+                <div class="card__head">
+                    <div>
+                        <p class="eyebrow">@(query.Lecture?.SessionDate.ToString("ddd d MMM yyyy") ?? "Session removed")</p>
+                        <h2 class="card__title">@(query.Student?.DisplayName ?? "Unknown student")</h2>
+                        <p class="muted num">@(query.Student?.StudentNumber ?? "")</p>
+                    </div>
+                    <div class="card__head-actions">
+                        <span class="pill pill--@(query.Status.ToString().ToLowerInvariant())">@query.Status</span>
+                        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/QueryEdit" asp-route-queryId="@query.Id">Edit</a>
+                    </div>
+                </div>
+
+                <p class="query__reason">@query.Reason</p>
+                <p class="muted">
+                    Asked for <strong>@query.RequestedStatus</strong>
+                    &middot; sent @query.SubmittedAtUtc.ToLocalTime().ToString("d MMM yyyy HH:mm")
+                    @if (query.WasRaisedByLecturer)
+                    {
+                        <text>&middot; recorded on the student's behalf</text>
+                    }
+                    @if (query.WasAmended)
+                    {
+                        <text>&middot; edited since</text>
+                    }
+                </p>
+
+                @if (query.IsOpen)
+                {
+                    <form method="post" class="form form--resolve">
+                        <input type="hidden" name="queryId" value="@query.Id" />
+                        <div class="field">
+                            <label class="label" for="note-@query.Id">Note for the student (optional)</label>
+                            <input class="input" id="note-@query.Id" name="note" maxlength="1000"
+                                   placeholder="Checked against the signed sheet for that lecture." />
+                        </div>
+                        <div class="form__actions">
+                            <button type="submit" class="btn" asp-page-handler="Approve">Approve and update the register</button>
+                            <button type="submit" class="btn btn--ghost" asp-page-handler="Reject">Reject</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <p class="query__outcome">
+                        @(query.Status == QueryStatus.Approved ? "Approved" : "Rejected")
+                        @(query.ResolvedAtUtc.HasValue ? " on " + query.ResolvedAtUtc.Value.ToLocalTime().ToString("d MMM yyyy HH:mm") : "")
+                        @(string.IsNullOrWhiteSpace(query.ResolutionNote) ? "" : " — " + query.ResolutionNote)
+                    </p>
+                }
+            </li>
+        }
+    </ul>
+}

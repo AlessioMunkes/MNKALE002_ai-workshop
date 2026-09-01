@@ -1,0 +1,217 @@
+@page "{studentId:int}"
+@model AttendanceRegister.Pages.Lecturer.StudentDetailModel
+@{
+    ViewData["Title"] = Model.Detail.Summary.DisplayName;
+    var summary = Model.Detail.Summary;
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@summary.StudentNumber</p>
+        <h1 class="page-head__title">
+            @summary.DisplayName
+            @if (!Model.Detail.IsActive)
+            {
+                <span class="pill pill--absent">Inactive</span>
+            }
+        </h1>
+        <p class="muted">@Model.Detail.Email</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Students">Back to class list</a>
+    </div>
+</header>
+
+<partial name="_ValidationSummary" model="ModelState" />
+
+<section class="card card--figure rise @(summary.MeetsThreshold ? "is-good" : "is-risk")">
+    <div class="detail-head">
+        <div class="detail-head__figure">
+            <p class="figure__label">Attendance</p>
+            <p class="figure__value">@(summary.Percentage.ToString("0.#"))<span class="figure__unit">&percnt;</span></p>
+            <p class="figure__caption">@summary.SessionsAttended of @summary.SessionsHeld sessions</p>
+        </div>
+
+        <div class="detail-head__body">
+            <div class="meter" role="img" aria-label="@(summary.Percentage.ToString("0.#")) percent against a @(summary.MinimumPercent) percent requirement">
+                <div class="meter__fill" style="width:@(Math.Min(100, summary.Percentage).ToString("0.#"))%"></div>
+                <div class="meter__threshold" style="left:@(summary.MinimumPercent)%"></div>
+            </div>
+
+            @if (summary.MeetsThreshold)
+            {
+                <p class="figure__note">Above the @summary.MinimumPercent&percnt; requirement, with @summary.SessionsCanStillMiss @(summary.SessionsCanStillMiss == 1 ? "session" : "sessions") of slack left.</p>
+            }
+            else
+            {
+                <p class="figure__note figure__note--warn">Below the @summary.MinimumPercent&percnt; requirement. Needs the next @summary.SessionsNeededToRecover @(summary.SessionsNeededToRecover == 1 ? "session" : "sessions") to recover.</p>
+            }
+
+            <partial name="_AttendanceStrip" model="summary.Cells" />
+            <p class="muted">@Model.Detail.SelfCheckIns of these were recorded by the student's own check-in.</p>
+        </div>
+    </div>
+</section>
+
+<section class="card rise rise--2">
+    <details class="disclosure" open="@(Model.ShowEditForm ? "open" : null)">
+        <summary class="disclosure__summary">Edit details</summary>
+
+        <div class="grid grid--split">
+            <form method="post" asp-page-handler="Update" class="form">
+                <div class="field">
+                    <label class="label" asp-for="Edit.StudentNumber">
+                        Student number
+                        <span class="hint" tabindex="0" data-tip="Correcting a mistyped number keeps the attendance already captured against this student.">?</span>
+                    </label>
+                    <input class="input" asp-for="Edit.StudentNumber" autocomplete="off" />
+                    <span class="field__error" asp-validation-for="Edit.StudentNumber"></span>
+                </div>
+
+                <div class="field">
+                    <label class="label" asp-for="Edit.DisplayName">Full name</label>
+                    <input class="input" asp-for="Edit.DisplayName" autocomplete="off" />
+                    <span class="field__error" asp-validation-for="Edit.DisplayName"></span>
+                </div>
+
+                <div class="field">
+                    <label class="label" asp-for="Edit.Email">Email</label>
+                    <input class="input" asp-for="Edit.Email" type="email" autocomplete="off" />
+                    <span class="field__error" asp-validation-for="Edit.Email"></span>
+                </div>
+
+                <div class="form__actions">
+                    <button type="submit" class="btn">Save details</button>
+                </div>
+            </form>
+
+            <div class="stack">
+                <form method="post" asp-page-handler="ResetPassword" class="form">
+                    <div class="field">
+                        <label class="label" asp-for="NewPassword">Reset the password</label>
+                        <span class="password-field" data-password-toggle>
+                            <input class="input" asp-for="NewPassword" type="password" autocomplete="new-password" />
+                        </span>
+                        <p class="field__help">At least @Model.MinimumPasswordLength characters. Hand it to the student directly.</p>
+                        <span class="field__error" asp-validation-for="NewPassword"></span>
+                    </div>
+                    <button type="submit" class="btn btn--ghost btn--sm">Reset password</button>
+                </form>
+
+                <hr class="rule" />
+
+                <form method="post" asp-page-handler="SetActive">
+                    <input type="hidden" name="active" value="@(Model.Detail.IsActive ? "false" : "true")" />
+                    @if (Model.Detail.IsActive)
+                    {
+                        <button type="submit" class="btn btn--danger btn--sm">Deactivate this student</button>
+                        <p class="muted">They can no longer sign in. Every attendance record is kept, and they stay on the class list.</p>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn btn--sm">Reactivate this student</button>
+                        <p class="muted">They can sign in again with their existing password.</p>
+                    }
+                </form>
+            </div>
+        </div>
+    </details>
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Session history</h2>
+        <p class="muted">Newest first</p>
+    </div>
+
+    @if (Model.Detail.Sessions.Count == 0)
+    {
+        <p class="empty">No sessions have been held yet.</p>
+    }
+    else
+    {
+        <div class="table-wrap table-wrap--tall">
+            <table class="table" data-table-tools data-table-id="student-sessions">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Session</th>
+                    <th scope="col">Topic</th>
+                    <th scope="col" data-filter data-label="Status">Status</th>
+                    <th scope="col" data-filter data-label="Captured by">Captured by</th>
+                    <th scope="col" data-label="Recorded at">Recorded</th>
+                    <th scope="col">Note</th>
+                    <th scope="col" data-nosort><span class="sr-only">Action</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var session in Model.Detail.Sessions)
+                {
+                    <tr>
+                        <th scope="row" class="num" data-sort="@session.SortKey">@session.SessionDate.ToString("ddd d MMM yyyy")</th>
+                        <td>@(string.IsNullOrWhiteSpace(session.Topic) ? "—" : session.Topic)</td>
+                        <td data-value="@session.StatusLabel">
+                            <span class="pill pill--@(session.StatusModifier)">@session.StatusLabel</span>
+                        </td>
+                        <td class="muted">@session.SourceLabel</td>
+                        <td class="muted num" data-sort="@session.RecordedSortKey">@(session.RecordedLocal?.ToString("d MMM yyyy HH:mm") ?? "—")</td>
+                        <td class="muted">@(string.IsNullOrWhiteSpace(session.Note) ? "—" : session.Note)</td>
+                        <td class="cell--action">
+                            <a class="link" asp-page="/Lecturer/Register" asp-route-lectureId="@session.LectureId">Edit register</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Queries raised</h2>
+        <a class="link" asp-page="/Lecturer/Queries">Go to all queries</a>
+    </div>
+
+    @if (Model.Detail.Queries.Count == 0)
+    {
+        <p class="empty">This student has not raised any queries.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table" data-table-tools data-table-id="student-queries">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Session</th>
+                    <th scope="col" data-filter data-label="Outcome">Outcome</th>
+                    <th scope="col" data-label="Asked for">Asked for</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col" data-label="Lecturer note">Note</th>
+                    <th scope="col">Sent</th>
+                    <th scope="col" data-nosort><span class="sr-only">Action</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var query in Model.Detail.Queries)
+                {
+                    var queryKey = query.Lecture?.SessionDate.ToString("yyyy-MM-dd") ?? "";
+                    var sentKey = query.SubmittedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                    <tr>
+                        <th scope="row" class="num" data-sort="@queryKey">@(query.Lecture?.SessionDate.ToString("d MMM yyyy") ?? "Session removed")</th>
+                        <td data-value="@query.Status">
+                            <span class="pill pill--@(query.Status.ToString().ToLowerInvariant())">@query.Status</span>
+                        </td>
+                        <td>@query.RequestedStatus</td>
+                        <td>@query.Reason</td>
+                        <td class="muted">@(string.IsNullOrWhiteSpace(query.ResolutionNote) ? "—" : query.ResolutionNote)</td>
+                        <td class="muted num" data-sort="@sentKey">@query.SubmittedAtUtc.ToLocalTime().ToString("d MMM yyyy HH:mm")</td>
+                        <td class="cell--action">
+                            <a class="link" asp-page="/Lecturer/QueryEdit" asp-route-queryId="@query.Id">Edit</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

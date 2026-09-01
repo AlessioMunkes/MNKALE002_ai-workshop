@@ -1,0 +1,109 @@
+@page
+@model AttendanceRegister.Pages.HelpModel
+@{
+    ViewData["Title"] = "Help";
+}
+
+<header class="page-head">
+    <h1 class="page-head__title">How the attendance register works</h1>
+    <p class="page-head__lede">A short tour of every screen, and what to do when something looks wrong.</p>
+</header>
+
+<section class="card card--flat">
+    <h2 class="card__title">If you are a student</h2>
+    <dl class="deflist">
+        <dt>Dashboard</dt>
+        <dd>Shows your attendance percentage, whether you are above the @Model.MinimumPercent&percnt; requirement, and how many sessions you can still afford to miss. The coloured strip is one square per session: filled means you were counted, hollow means you were not.</dd>
+
+        <dt>Recording attendance</dt>
+        <dd>During a lecture your lecturer opens check-in and puts a six-character code on the screen. Type it into the box on your dashboard before the window closes. Codes leave out the letters and digits that are easy to confuse, and case does not matter.</dd>
+
+        <dt>My attendance</dt>
+        <dd>The full session-by-session list, newest first, with how each record was captured &mdash; your own check-in, a spreadsheet upload, or a lecturer edit.</dd>
+
+        <dt>Queries</dt>
+        <dd>Pick the session, say what it should be, and explain what happened in at least a sentence. You can have one open query per session. The outcome appears on the same page.</dd>
+    </dl>
+</section>
+
+<section class="card card--flat">
+    <h2 class="card__title">If you are a lecturer</h2>
+    <dl class="deflist">
+        <dt>Overview</dt>
+        <dd>Attendance per session as a chart, the class average, and the list of students below the @Model.MinimumPercent&percnt; threshold sorted by who is furthest behind.</dd>
+
+        <dt>Sessions</dt>
+        <dd>Create a session, open check-in for a set number of minutes, or close it early. Only one session can accept check-ins at a time. Opening a second one closes the first.</dd>
+
+        <dt>Register</dt>
+        <dd>Open any session to mark students individually and save the lot in one go. Every change records who made it and when.</dd>
+
+        <dt>Upload register</dt>
+        <dd>Bring in past attendance from a spreadsheet. Use <strong>Check the file</strong> first to see what would change without writing anything.</dd>
+
+        <dt>Queries</dt>
+        <dd>Approving a query rewrites the register to the status the student asked for and notes that it came from a query. Rejecting leaves the register alone. Either way the student sees your note.</dd>
+    </dl>
+</section>
+
+<section class="card card--flat">
+    <h2 class="card__title">The upload file</h2>
+    <p>One row per student, one column per session. Accepted file types: @(string.Join(", ", Model.SupportedExtensions)).</p>
+
+    <div class="table-wrap">
+        <table class="table table--sample">
+            <thead>
+            <tr><th>Student Name</th><th>Student No</th><th>2026/02/25</th><th>2026/03/02</th></tr>
+            </thead>
+            <tbody>
+            <tr><td>Thandi Mokoena</td><td>MKNTHA001</td><td>1</td><td>0</td></tr>
+            <tr><td>Sipho Dlamini</td><td>DLMSIP002</td><td>1</td><td>1</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <ul class="bullets">
+        <li>The first row is the header. The name and student-number columns are found by their headings, so their order does not matter.</li>
+        <li>Every other column heading must be a date. <code>2026/03/09</code> and <code>2026-03-09</code> both work.</li>
+        <li>Cell values: @AttendanceRegister.Services.Import.AttendanceValueMap.Describe()</li>
+        <li>Semicolons, commas and tabs are all detected automatically.</li>
+        <li>Uploading the same file twice is safe. Matching records are left alone and only differences are written.</li>
+        <li>A cell value the system does not recognise is reported with its row and date, and that one cell is skipped rather than the whole file.</li>
+    </ul>
+</section>
+
+<section class="card card--flat">
+    <h2 class="card__title">Working with the tables</h2>
+    <p>Every table in the system has the same toolbar above it.</p>
+    <dl class="deflist">
+        <dt>Search</dt>
+        <dd>Filters rows as you type, matching on anything visible in the row &mdash; a name, a student number, a date, a status.</dd>
+
+        <dt>Filters</dt>
+        <dd>Columns with a small set of repeated values get a dropdown. On the class list you can filter by standing to see only students below the requirement; on a session history you can filter by status or by how the record was captured.</dd>
+
+        <dt>Sorting</dt>
+        <dd>Click a column heading to sort by it, highest first. Click again for lowest first, and a third time to put the table back the way it came. Empty cells stay at the bottom either way. Headings are buttons, so Tab and Enter work as well as the mouse.</dd>
+
+        <dt>Columns</dt>
+        <dd>Hide columns you are not using. Your choice is remembered on that device, per table, so a register you always read the same way stays that way. <strong>Reset</strong> brings everything back.</dd>
+    </dl>
+    <p class="muted">On the register screen, searching and filtering only hides rows from view. Saving still writes every student, not just the ones on screen.</p>
+</section>
+
+<section class="card card--flat">
+    <h2 class="card__title">When something goes wrong</h2>
+    <dl class="deflist">
+        <dt>&ldquo;No session is open for check-in right now&rdquo;</dt>
+        <dd>The window has closed or was never opened. Ask your lecturer to open it again, then raise a query if the lecture has already ended.</dd>
+
+        <dt>&ldquo;That code does not match&rdquo;</dt>
+        <dd>Codes never contain the letters O, I or L, or the digits 0 and 1. If you typed one of those, you have misread a similar-looking character.</dd>
+
+        <dt>&ldquo;Student number appears more than once in this file&rdquo;</dt>
+        <dd>The upload was rejected before anything was written. Remove the duplicate row and upload again.</dd>
+
+        <dt>A session shows as blank rather than absent</dt>
+        <dd>Nobody has captured that session yet. Blank sessions are ignored when percentages are worked out, so they cannot count against a student.</dd>
+    </dl>
+</section>
