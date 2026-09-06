@@ -1,8 +1,13 @@
 /*
  * reveal.js
  *
- * Fades each content block in as it scrolls into view, and on load for the
- * blocks already on screen.
+ * Fades each content block in as it scrolls into view.
+ *
+ * Blocks that are already on screen when the page loads are shown at once,
+ * with no transition. Animating content the reader can already see delays a
+ * screen they did not have to wait for, and this application is one somebody
+ * opens dozens of times a day. Motion is reserved for blocks that genuinely
+ * arrive: the ones scrolled to.
  *
  * Two things keep this honest:
  *
@@ -17,10 +22,11 @@
     'use strict';
 
     var VISIBLE = 'is-revealed';
+    var IMMEDIATE = 'is-immediate';
 
     function revealAll(blocks) {
         for (var i = 0; i < blocks.length; i++) {
-            blocks[i].classList.add(VISIBLE);
+            blocks[i].classList.add(IMMEDIATE, VISIBLE);
         }
     }
 
@@ -39,6 +45,21 @@
             return;
         }
 
+        var fold = window.innerHeight || document.documentElement.clientHeight;
+        var deferred = [];
+
+        blocks.forEach(function (block) {
+            // Anything whose top edge is already within the viewport was not
+            // being waited for. Show it with no transition at all.
+            if (block.getBoundingClientRect().top < fold) {
+                block.classList.add(IMMEDIATE, VISIBLE);
+            } else {
+                deferred.push(block);
+            }
+        });
+
+        if (deferred.length === 0) { return; }
+
         var observer = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
                 if (!entry.isIntersecting) { return; }
@@ -52,17 +73,10 @@
             threshold: 0.04
         });
 
-        blocks.forEach(function (block, index) {
-            // A short stagger for the blocks already on screen at load. Later
-            // blocks arrive one at a time as they scroll, so they need none.
-            if (index < 4) {
-                block.style.transitionDelay = (index * 70) + 'ms';
-            }
-            observer.observe(block);
-        });
+        deferred.forEach(function (block) { observer.observe(block); });
 
         // Belt and braces: if anything above went wrong, nothing stays hidden.
-        window.setTimeout(function () { revealAll(blocks); }, 2500);
+        window.setTimeout(function () { revealAll(deferred); }, 2500);
     }
 
     if (document.readyState === 'loading') {

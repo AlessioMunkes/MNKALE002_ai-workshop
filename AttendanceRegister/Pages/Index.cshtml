@@ -5,21 +5,23 @@
 }
 
 <section class="hero">
-    <partial name="_Logo" model="@("hero")" />
-    <p class="eyebrow">INF3003W &middot; @Model.CourseTitle</p>
-    <h1 class="hero__title">The register, without the paper.</h1>
-    <p class="hero__lede">
-        Students check in with a code shown in the lecture. Lecturers upload past registers,
-        settle queries, and see where the class stands.
-    </p>
-    <div class="hero__actions">
-        <a class="btn btn--lg" asp-page="/Account/Login">Sign in</a>
-        <a class="btn btn--ghost btn--lg" asp-page="/Help">What it does</a>
+    <div class="hero__copy">
+        <partial name="_Logo" model="@("hero")" />
+        <p class="eyebrow">@Model.CourseCode &middot; @Model.CourseTitle</p>
+        <h1 class="hero__title">The register,<br />without the paper.</h1>
+        <p class="hero__lede">
+            Students check in with a code shown in the lecture. Lecturers upload past
+            registers, settle queries, and see where the class stands.
+        </p>
+        <div class="hero__actions">
+            <a class="btn btn--lg" asp-page="/Account/Login">Sign in</a>
+            <a class="btn btn--ghost btn--lg" asp-page="/Help">What it does</a>
+        </div>
     </div>
-
-    <ul class="hero__points">
-        <li><strong>Check in</strong> during class with a six-character code</li>
-        <li><strong>Query</strong> anything recorded wrongly</li>
-        <li><strong>See</strong> where you stand against the DP line</li>
-    </ul>
 </section>
+
+<ul class="hero__points">
+    <li><strong>Check in</strong> during class with a six-character code</li>
+    <li><strong>Query</strong> anything recorded wrongly</li>
+    <li><strong>See</strong> where you stand against the DP line</li>
+</ul>

@@ -14,8 +14,10 @@
     --ink-3:        #6b7a88;
     --canvas:       #eef1f4;
     --surface:      #ffffff;
-    --line:         #d7dee4;
-    --line-strong:  #b8c3cd;
+    /* Semi-transparent rather than opaque grey, so a border darkens whatever it
+       sits on instead of being a fixed colour that only works on white. */
+    --line:         rgba(21, 30, 38, 0.12);
+    --line-strong:  rgba(21, 30, 38, 0.24);
 
     --brand:        #0e4d64;
     --brand-dark:   #0a3b4d;
@@ -46,8 +48,16 @@
     --radius-lg:    10px;
     --shell:        1180px;
 
-    --ease:         cubic-bezier(0.22, 0.61, 0.36, 1);
-    --fast:         140ms;
+    /* Enter and exit want opposite curves. Something arriving should decelerate
+       into place (ease-out); something leaving should accelerate away (ease-in).
+       One curve for both makes exits feel like they are being dragged. */
+    --ease-out:     cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-in:      cubic-bezier(0.55, 0.06, 0.68, 0.19);
+    --ease:         var(--ease-out);
+
+    /* Hover fires tens of times a minute, so it is nearly instant. Entrances
+       happen once per screen and can afford to be seen. */
+    --fast:         120ms;
     --slow:         320ms;
 
     --font-body:    'Lato', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -249,36 +259,54 @@ code {
 .stack { display: flex; flex-direction: column; gap: 8px; }
 
 /* ---------------------------------------------------------------- hero --- */
+/* The landing page is seen once, so it can afford an entrance the working
+   screens cannot. Everything here is staggered ease-out and then still. */
 .hero {
     position: relative;
     background: var(--grad-hero);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
-    padding: 48px 44px 40px;
+    padding: clamp(34px, 5vw, 62px) clamp(24px, 4vw, 56px);
     overflow: hidden;
-    animation: rise-in var(--slow) var(--ease) both;
+    display: flex; align-items: center; gap: clamp(28px, 5vw, 72px); flex-wrap: wrap;
 }
 .hero::before {
-    content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
     background: linear-gradient(90deg, var(--brand), #2a8fae, transparent);
 }
+
+.hero__copy { flex: 1 1 380px; min-width: 300px; }
+.hero__copy > * { animation: rise-in 420ms var(--ease-out) both; }
+.hero__copy > .logo        { animation-delay: 0ms; }
+.hero__copy > .eyebrow     { animation-delay: 40ms; }
+.hero__copy > .hero__title { animation-delay: 80ms; }
+.hero__copy > .hero__lede  { animation-delay: 120ms; }
+.hero__copy > .hero__actions { animation-delay: 160ms; }
+
 .hero__title {
-    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
-    margin: 4px 0 14px;
-    max-width: 16ch;
+    font-size: clamp(2.2rem, 5.4vw, 3.4rem);
+    line-height: 1.06;
+    /* Display sizes want the tracking pulled in; letters read too far apart as
+       they grow. */
+    letter-spacing: -0.03em;
+    margin: 6px 0 16px;
 }
-.hero__lede { font-size: 1.08rem; color: var(--ink-2); max-width: 56ch; margin: 0; }
-.hero__actions { display: flex; gap: 11px; margin-top: 26px; flex-wrap: wrap; }
+.hero__lede { font-size: 1.06rem; color: var(--ink-2); max-width: 46ch; margin: 0; }
+.hero__actions { display: flex; gap: 11px; margin-top: 28px; flex-wrap: wrap; }
 
 .hero__points {
-    list-style: none; margin: 34px 0 0; padding: 22px 0 0;
-    border-top: 1px solid rgba(14, 77, 100, 0.14);
-    display: flex; flex-wrap: wrap; gap: 12px 40px;
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 12px 28px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     font-size: 0.94rem; color: var(--ink-2);
 }
-.hero__points li { animation: fade-in var(--slow) var(--ease) both; }
-.hero__points li:nth-child(2) { animation-delay: 90ms; }
-.hero__points li:nth-child(3) { animation-delay: 180ms; }
+.hero__points li {
+    padding-left: 14px; border-left: 2px solid var(--brand-soft);
+    animation: fade-in 360ms var(--ease-out) both;
+}
+.hero__points li:nth-child(1) { animation-delay: 240ms; }
+.hero__points li:nth-child(2) { animation-delay: 300ms; }
+.hero__points li:nth-child(3) { animation-delay: 360ms; }
 .hero__points strong { font-family: var(--font-display); font-weight: 600; color: var(--brand); }
 
 .grid { display: grid; gap: 16px; }
@@ -293,9 +321,16 @@ code {
     background: var(--surface); border: 1px solid var(--line);
     border-radius: var(--radius-lg); padding: 15px 17px;
     box-shadow: var(--shadow-sm);
-    transition: transform var(--slow) var(--ease), box-shadow var(--slow) var(--ease);
 }
-.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* Only the tiles that go somewhere lift. A card that rises under the cursor
+   and then does nothing is a promise the interface does not keep. */
+.stat--link {
+    transition: transform var(--fast) var(--ease-in), box-shadow var(--fast) var(--ease-in);
+}
+.stat--link:hover {
+    transition: transform var(--fast) var(--ease-out), box-shadow var(--fast) var(--ease-out);
+}
 .stat--sm { padding: 11px 13px; }
 .stat.is-attention { border-color: var(--late); background: linear-gradient(135deg, #fff 0%, var(--warn-bg) 100%); }
 .stat__label { margin: 0 0 4px; font-size: 0.79rem; color: var(--ink-3); }
@@ -308,6 +343,10 @@ code {
 .figure__value {
     margin: 2px 0 0; font-family: var(--font-display); font-weight: 700;
     font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums;
+    /* Tracking is size-specific: letters read too far apart as they grow, so
+       display sizes want it pulled in. The projector code keeps positive
+       tracking on purpose — it is read character by character, not as a word. */
+    letter-spacing: -0.02em;
 }
 .figure__unit { font-size: 1.15rem; color: var(--ink-3); font-weight: 600; }
 .figure__caption { margin: 4px 0 14px; color: var(--ink-3); font-size: 0.9rem; }
@@ -627,7 +666,7 @@ code {
     white-space: normal; width: max-content; max-width: 250px;
     opacity: 0; visibility: hidden; pointer-events: none;
     box-shadow: var(--shadow-md);
-    transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease), visibility var(--fast);
+    transition: opacity var(--fast) var(--ease-in), transform var(--fast) var(--ease-in), visibility var(--fast);
     z-index: 20;
 }
 
@@ -635,6 +674,7 @@ code {
 [data-tip]:focus::after,
 [data-tip]:focus-visible::after {
     opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    transition: opacity var(--fast) var(--ease-out), transform var(--fast) var(--ease-out), visibility var(--fast);
 }
 
 /* =============================================================
@@ -767,8 +807,34 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
    is why there is no fallback to write. */
 @view-transition { navigation: auto; }
 
-::view-transition-old(root) { animation: fade-out 90ms var(--ease) both; }
-::view-transition-new(root) { animation: fade-in 180ms var(--ease) both; }
+/* Naming the chrome takes it out of the root transition. The masthead and
+   footer are the same on every screen, so cross-fading them made persistent
+   furniture flicker on every navigation — the one thing that should have
+   stayed still was the thing moving. Only the content changes now. */
+.masthead { view-transition-name: site-masthead; }
+.footer   { view-transition-name: site-footer; }
+.main     { view-transition-name: page-content; }
+
+::view-transition-old(site-masthead),
+::view-transition-new(site-masthead),
+::view-transition-old(site-footer),
+::view-transition-new(site-footer) { animation: none; mix-blend-mode: normal; }
+
+/* Out fast and accelerating, in slower and decelerating: the page being left
+   should get out of the way, the page arriving should settle. */
+::view-transition-old(page-content) {
+    animation: page-leave 90ms var(--ease-in) both;
+}
+::view-transition-new(page-content) {
+    animation: page-enter 220ms var(--ease-out) both;
+}
+
+@keyframes page-leave {
+    to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes page-enter {
+    from { opacity: 0; transform: translateY(8px); }
+}
 
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 
@@ -890,7 +956,7 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
     /* Drawn on load: the term accumulating is the point of this chart. */
     stroke-dasharray: 2400;
     stroke-dashoffset: 2400;
-    animation: draw-line 1100ms var(--ease) 120ms forwards;
+    animation: draw-line 650ms var(--ease-out) 60ms forwards;
 }
 .chart__line.is-low { stroke: var(--absent); }
 
@@ -901,7 +967,7 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
     stroke: var(--brand);
     stroke-width: 1.8;
     opacity: 0;
-    animation: fade-in 400ms var(--ease) 900ms forwards;
+    animation: fade-in 260ms var(--ease-out) 560ms forwards;
     transition: r var(--fast) var(--ease);
 }
 .chart__line.is-low ~ .chart__dots .chart__dot { stroke: var(--absent); }
@@ -1059,11 +1125,13 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
 
 /* Each new code arrives rather than teleporting, which is the difference
    between "it changed" and "did I misread that?" */
+/* Transform and opacity only: both are composited, where a blur filter forces
+   a repaint on every frame of a code that changes twice a minute all lecture. */
 @keyframes code-swap {
-    0%   { opacity: 0; transform: translateY(-0.35em); filter: blur(4px); }
-    100% { opacity: 1; transform: none; filter: none; }
+    0%   { opacity: 0; transform: translateY(-0.28em); }
+    100% { opacity: 1; transform: none; }
 }
-.live-code__value.is-swapping { animation: code-swap 420ms var(--ease) both; }
+.live-code__value.is-swapping { animation: code-swap 320ms var(--ease-out) both; }
 
 .live-code.is-closed .live-code__value { color: var(--ink-3); letter-spacing: 0.02em; }
 
@@ -1379,4 +1447,28 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
 .chart-legend__key--threshold {
     height: 0; border-top: 2px dashed var(--ink-2);
     border-radius: 0; background: none;
+}
+
+
+/* =============================================================
+   Reveal only what is off screen
+
+   Blocks already in the viewport when a page loads appear at
+   once. Fading in content the reader can already see makes a
+   screen a lecturer opens forty times a day feel slower every
+   single time, and buys nothing — they were not waiting for it.
+   ============================================================= */
+.has-js .main > *.is-immediate {
+    opacity: 1;
+    transform: none;
+    transition: none;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .hero__copy > *,
+    .hero__points li { animation: none; }
+
+    ::view-transition-old(page-content),
+    ::view-transition-new(page-content) { animation: none; }
 }

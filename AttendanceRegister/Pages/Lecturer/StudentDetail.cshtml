@@ -120,6 +120,41 @@
 
 <section class="card">
     <div class="card__head">
+        <div>
+            <h2 class="card__title">Against the class</h2>
+            <p class="muted">This student's running rate, the class average, and the requirement.</p>
+        </div>
+        @if (Model.Trend.HasData)
+        {
+            <p class="muted">
+                @if (Model.Trend.AgainstClass >= 0)
+                {
+                    <text><strong>@(Model.Trend.AgainstClass.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) points above</strong> the class</text>
+                }
+                else
+                {
+                    <text><strong>@(Math.Abs(Model.Trend.AgainstClass).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) points below</strong> the class</text>
+                }
+                @if (!string.IsNullOrEmpty(Model.DriftText))
+                {
+                    <text> &middot; @Model.DriftText</text>
+                }
+            </p>
+        }
+    </div>
+
+    @if (!Model.Trend.HasData)
+    {
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "register", Title = "Not enough sessions yet", Message = "Two captured sessions are needed before a trend means anything." })" />
+    }
+    else
+    {
+        <partial name="_TrendChart" model="Model.Trend" />
+    }
+</section>
+
+<section class="card">
+    <div class="card__head">
         <h2 class="card__title">Session history</h2>
         <p class="muted">Newest first</p>
     </div>

@@ -12,6 +12,7 @@ public class IndexModel : PageModel
     public IndexModel(IOptions<CourseOptions> course) => _course = course.Value;
 
     public string CourseTitle => _course.Title;
+    public string CourseCode => _course.Code;
 
     public IActionResult OnGet()
     {

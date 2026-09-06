@@ -35,6 +35,24 @@ public class StudentDetailModel : PageModel
 
     public bool ShowEditForm { get; private set; }
 
+    /// <summary>
+    /// The same chart the student sees on their own dashboard. Showing the
+    /// lecturer something different from what the student is looking at is how
+    /// a conversation about attendance goes wrong.
+    /// </summary>
+    public StudentTrend Trend { get; private set; } = new();
+
+    public string DriftText
+    {
+        get
+        {
+            var drift = Trend.RecentDrift;
+            if (Math.Abs(drift) < 0.1) { return string.Empty; }
+            var direction = drift > 0 ? "up" : "down";
+            return $"{direction} {Math.Abs(drift).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} points over the last five sessions";
+        }
+    }
+
     public int MinimumPasswordLength => StudentAdminService.MinimumPasswordLength;
 
     public class EditInput
@@ -149,6 +167,7 @@ public class StudentDetailModel : PageModel
         }
 
         Detail = detail;
+        Trend = await _analytics.GetStudentTrendAsync(StudentId, HttpContext.RequestAborted);
         return true;
     }
 }

@@ -691,3 +691,112 @@ the queries attached to it.
 **The student grid is grouped by status, not sorted by name.** Alphabetical
 order scatters absences through a hundred tiles and shows nothing. Grouped, a
 pale block is immediately the size of the problem.
+
+
+---
+
+## 34. Motion audited against a design-engineering rule set
+
+The interface was reviewed against the animation and UI rules published in
+`emilkowalski/skills`. Several things already held: no `transition: all`
+anywhere, no element entering from `scale(0)`, shadows already declared as
+semi-transparent rgba, and `prefers-reduced-motion` respected throughout.
+
+Six did not, and were changed.
+
+**Enter and exit now use opposite curves.** One easing token was doing both
+jobs. Something arriving should decelerate into place; something leaving should
+accelerate away. With one curve, exits feel dragged. `--ease-out` and
+`--ease-in` are separate tokens now, and the hover states that need both set
+the transition twice — once on the base rule for leaving, once on `:hover` for
+arriving.
+
+**Hover got faster, and rarer.** Card hover was transitioning over 320ms, the
+same duration as a page entrance, for something that fires tens of times a
+minute. It is 120ms now. The lift was also removed from stat tiles that are not
+links: a card that rises under the cursor and then does nothing is a promise
+the interface does not keep.
+
+**Blocks already on screen no longer fade in.** The scroll reveal animated
+every block on every page load, including the ones the reader could already
+see. On a screen a lecturer opens dozens of times a day, that is a delay
+bought for nothing. Motion is now reserved for blocks that genuinely arrive —
+the ones scrolled to.
+
+**The chart line draw went from 1100ms to 650ms**, for the same reason: the
+overview is the most-visited lecturer screen, and an animation you sit through
+repeatedly stops being a flourish.
+
+**The rotating code lost its blur.** Transform and opacity are composited; a
+blur filter forces a repaint on every frame, for a code that changes twice a
+minute for the length of a lecture. The movement reads the same without it.
+
+**Large numerals got their tracking pulled in.** Tracking is size-specific —
+letters read too far apart as they grow. The attendance figure at 3rem now
+carries `-0.02em`. The projector code keeps its positive tracking on purpose:
+it is read character by character, not as a word, and there the extra space is
+what makes it legible from the back of a room.
+
+**One thing was left as it was.** Borders became semi-transparent ink rather
+than opaque grey, so they darken whatever they sit on instead of being a fixed
+colour that only works against white.
+
+**What was not adopted.** The skills themselves are written for agents working
+in React and Tailwind codebases, and several of the specific recipes assume
+that stack. The value here was the rule set, not the code — applying the
+reasoning to hand-written CSS is the same exercise, and the decisions above are
+ones this interface can defend on its own terms.
+
+---
+
+## 35. The lecturer sees the student's own chart
+
+The student detail screen now carries the same trend chart the student has on
+their dashboard: their running rate, the class average, and the requirement.
+
+**Chosen because** the two are going to talk about it. A lecturer looking at a
+different picture from the one the student is looking at is how a conversation
+about attendance goes wrong — the same partial and the same service method
+means there is nothing to reconcile.
+
+---
+
+## 36. The landing page shows the product
+
+The hero is a column of copy beside a small preview: a rotating code with its
+countdown, and an attendance rate with its strip. Both are built from the
+interface's own components rather than drawn as illustration.
+
+**Chosen because** three bullet points describing a check-in code are weaker
+than one card showing one. The preview is marked `aria-hidden`, because it is a
+picture of the product rather than information — everything it claims is also
+said in the text beside it.
+
+**The entrance is staggered, and only here.** A landing page is seen once,
+usually before signing in, so it can afford motion the working screens cannot.
+Every element uses ease-out with a short offset, and then the page is still.
+
+**The title lost tracking as it gained size** — `-0.03em` at up to 3.4rem.
+Letters read too far apart as they grow, so display type wants it pulled in.
+
+---
+
+## 37. Page transitions leave the chrome alone
+
+The masthead, footer and main content each carry a `view-transition-name`, so
+the browser treats them as three things rather than one.
+
+**What was wrong before.** The transition was applied to `root`, which
+cross-faded the entire page including the masthead and footer. Those are
+identical on every screen, so the one part of the interface that should have
+been visibly fixed was the part flickering on every navigation. Naming them
+takes them out of the animation entirely; they now hold still while the content
+changes underneath.
+
+**The content leaves and arrives on different curves.** Out in 90ms on
+`ease-in`, accelerating away; in over 220ms on `ease-out`, settling. Matching
+durations and curves in both directions makes a navigation feel like a
+cross-fade rather than a movement.
+
+Chromium honours all of this; other browsers ignore the at-rule and navigate as
+they always did.
