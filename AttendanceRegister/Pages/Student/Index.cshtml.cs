@@ -11,11 +11,13 @@ namespace AttendanceRegister.Pages.Student;
 public class IndexModel : PageModel
 {
     private readonly IAttendanceService _attendance;
+    private readonly IAnalyticsService _analytics;
     private readonly ICurrentUser _currentUser;
 
-    public IndexModel(IAttendanceService attendance, ICurrentUser currentUser)
+    public IndexModel(IAttendanceService attendance, IAnalyticsService analytics, ICurrentUser currentUser)
     {
         _attendance = attendance;
+        _analytics = analytics;
         _currentUser = currentUser;
     }
 
@@ -31,6 +33,20 @@ public class IndexModel : PageModel
     /// thing worth showing; a number sweeping up from nothing is just motion.
     /// </summary>
     public double PreviousPercent { get; private set; }
+
+    public StudentTrend Trend { get; private set; } = new();
+
+    /// <summary>Movement over the last five sessions, or nothing when it is flat.</summary>
+    public string DriftText
+    {
+        get
+        {
+            var drift = Trend.RecentDrift;
+            if (Math.Abs(drift) < 0.1) { return string.Empty; }
+            var direction = drift > 0 ? "up" : "down";
+            return $"{direction} {Math.Abs(drift).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} points over your last five sessions";
+        }
+    }
 
     [BindProperty]
     [Required(ErrorMessage = "Enter the six-character code shown in the lecture.")]
@@ -64,8 +80,11 @@ public class IndexModel : PageModel
     private async Task LoadAsync()
     {
         var cancellationToken = HttpContext.RequestAborted;
-        Summary = await _attendance.GetSummaryAsync(_currentUser.RequireUserId(), cancellationToken);
+        var studentId = _currentUser.RequireUserId();
+
+        Summary = await _attendance.GetSummaryAsync(studentId, cancellationToken);
         OpenSession = await _attendance.GetOpenSessionAsync(cancellationToken);
+        Trend = await _analytics.GetStudentTrendAsync(studentId, cancellationToken);
 
         JustCheckedIn = TempData["CheckedIn"] as string;
 

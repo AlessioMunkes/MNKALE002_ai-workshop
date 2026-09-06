@@ -181,6 +181,74 @@ public sealed class AnalyticsService : IAnalyticsService
         return rows;
     }
 
+    // --------------------------------------------------------- student trend --
+
+    /// <summary>
+    /// Three queries: the sessions with their counted totals, this student's
+    /// records, and the class size. Both running rates are then accumulated in
+    /// one pass, which is the only way to guarantee the two lines are measured
+    /// over exactly the same sessions.
+    /// </summary>
+    public async Task<StudentTrend> GetStudentTrendAsync(int studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var course = await _courseContext.GetAsync(cancellationToken);
+        var enrolled = await _db.Students.CountAsync(cancellationToken);
+
+        var sessions = await _db.Lectures.AsNoTracking()
+            .Where(l => l.CourseId == course.Id)
+            .OrderBy(l => l.SessionDate)
+            .Select(l => new
+            {
+                l.Id,
+                l.SessionDate,
+                Counted = l.AttendanceRecords.Count(r => AttendanceRules.Counted.Contains(r.Status)),
+                Recorded = l.AttendanceRecords.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var mine = await _db.AttendanceRecords.AsNoTracking()
+            .Where(r => r.StudentId == studentId)
+            .Select(r => new { r.LectureId, r.Status })
+            .ToDictionaryAsync(r => r.LectureId, r => r.Status, cancellationToken);
+
+        var points = new List<TrendPoint>();
+
+        var studentAttended = 0;
+        var studentHeld = 0;
+        var classAttended = 0;
+        var classPossible = 0;
+
+        foreach (var session in sessions)
+        {
+            // A session nobody captured is not a session anyone missed.
+            if (session.Recorded == 0)
+            {
+                continue;
+            }
+
+            studentHeld++;
+            var counted = mine.TryGetValue(session.Id, out var status) && status.Counts();
+            if (counted)
+            {
+                studentAttended++;
+            }
+
+            classAttended += session.Counted;
+            classPossible += enrolled;
+
+            points.Add(new TrendPoint(
+                session.SessionDate,
+                Math.Round(studentAttended * 100.0 / studentHeld, 1),
+                classPossible == 0 ? 0 : Math.Round(classAttended * 100.0 / classPossible, 1),
+                counted,
+                studentAttended,
+                studentHeld));
+        }
+
+        return new StudentTrend { Points = points, MinimumPercent = course.MinimumAttendancePercent };
+    }
+
     // ------------------------------------------------------- session overview --
 
     /// <summary>

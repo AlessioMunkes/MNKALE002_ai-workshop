@@ -12,6 +12,9 @@ public interface IAnalyticsService
     /// <summary>One student's full session history, or null if no such student.</summary>
     Task<StudentAttendanceDetail?> GetStudentDetailAsync(int studentId, CancellationToken cancellationToken = default);
 
+    /// <summary>One student's running rate beside the class, session by session.</summary>
+    Task<StudentTrend> GetStudentTrendAsync(int studentId, CancellationToken cancellationToken = default);
+
     /// <summary>Everything about one lecture, or null if no such lecture.</summary>
     Task<SessionOverview?> GetSessionOverviewAsync(int lectureId, CancellationToken cancellationToken = default);
 }

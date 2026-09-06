@@ -1,0 +1,106 @@
+@using AttendanceRegister.Infrastructure.Charts
+@model StudentTrend
+@{
+    var plot = new PlotArea(width: 900, height: 280, left: 44, top: 18, right: 16, bottom: 62);
+    var points = Model.Points;
+
+    var studentLine = new System.Text.StringBuilder();
+    var studentArea = new System.Text.StringBuilder();
+    var classLine = new System.Text.StringBuilder();
+
+    for (var i = 0; i < points.Count; i++)
+    {
+        var x = PlotArea.N(plot.BandCentre(i, points.Count));
+        var studentY = PlotArea.N(plot.YForPercent(points[i].StudentPercent));
+        var classY = PlotArea.N(plot.YForPercent(points[i].ClassPercent));
+        var baseline = PlotArea.N(plot.Bottom);
+
+        studentLine.Append(i == 0 ? "M" : "L").Append(x).Append(' ').Append(studentY).Append(' ');
+        classLine.Append(i == 0 ? "M" : "L").Append(x).Append(' ').Append(classY).Append(' ');
+
+        if (i == 0)
+        {
+            studentArea.Append('M').Append(x).Append(' ').Append(baseline).Append(' ');
+        }
+
+        studentArea.Append('L').Append(x).Append(' ').Append(studentY).Append(' ');
+
+        if (i == points.Count - 1)
+        {
+            studentArea.Append('L').Append(x).Append(' ').Append(baseline).Append(" Z");
+        }
+    }
+
+    var thresholdY = PlotArea.N(plot.YForPercent(Model.MinimumPercent));
+    var labelEvery = (int)Math.Ceiling(points.Count / 12.0);
+    var low = Model.BelowThreshold;
+}
+
+<div class="chart">
+    <svg viewBox="0 0 @PlotArea.N(plot.Width) @PlotArea.N(plot.Height)" role="img"
+         aria-label="Your running attendance against the class and the @Model.MinimumPercent percent requirement"
+         preserveAspectRatio="xMidYMid meet">
+        <defs>
+            <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="@(low ? "var(--absent)" : "var(--present)")" stop-opacity="0.24" />
+                <stop offset="100%" stop-color="@(low ? "var(--absent)" : "var(--present)")" stop-opacity="0.02" />
+            </linearGradient>
+        </defs>
+
+        <g class="chart__grid-group">
+            @for (var percent = 0; percent <= 100; percent += 25)
+            {
+                var y = PlotArea.N(plot.YForPercent(percent));
+                <g>
+                    <line class="chart__grid" x1="@PlotArea.N(plot.Left)" x2="@PlotArea.N(plot.Right)"
+                          y1="@y" y2="@y"></line>
+                    <text class="chart__axis" x="@PlotArea.N(plot.Left - 8)" y="@PlotArea.N(plot.YForPercent(percent) + 4)"
+                          text-anchor="end">@percent&#37;</text>
+                </g>
+            }
+        </g>
+
+        <path class="chart__area" d="@studentArea.ToString()" fill="url(#trend-fill)"></path>
+
+        @* Requirement first, then the class, then the student: the line that
+           matters most is drawn last so nothing crosses over it. *@
+        <line class="chart__threshold" x1="@PlotArea.N(plot.Left)" x2="@PlotArea.N(plot.Right)"
+              y1="@thresholdY" y2="@thresholdY"></line>
+
+        <path class="chart__line chart__line--class" d="@classLine.ToString().Trim()"></path>
+        <path class="chart__line chart__line--student @(low ? "is-low" : "")" d="@studentLine.ToString().Trim()"></path>
+
+        <g class="chart__dots">
+            @for (var i = 0; i < points.Count; i++)
+            {
+                var point = points[i];
+                var cx = PlotArea.N(plot.BandCentre(i, points.Count));
+                var cy = PlotArea.N(plot.YForPercent(point.StudentPercent));
+                var tip = $"{point.SessionDate:d MMM yyyy}: you {point.StudentPercent:0.#}% " +
+                          $"({point.StudentAttended} of {point.SessionsSoFar}), class {point.ClassPercent:0.#}%" +
+                          (point.StudentCounted ? "" : " — you were not counted at this session");
+                <circle class="chart__dot @(low ? "is-low" : "")" cx="@cx" cy="@cy" r="3.4">
+                    <title>@tip</title>
+                </circle>
+            }
+        </g>
+
+        <g class="chart__ticks">
+            @for (var i = 0; i < points.Count; i++)
+            {
+                if (i % labelEvery != 0) { continue; }
+                var tx = PlotArea.N(plot.BandCentre(i, points.Count));
+                <g>
+                    <text class="chart__axis" x="@tx" y="@PlotArea.N(plot.Bottom + 22)"
+                          text-anchor="middle">@points[i].SessionDate.ToString("d MMM")</text>
+                </g>
+            }
+        </g>
+    </svg>
+</div>
+
+<ul class="chart-legend">
+    <li><span class="chart-legend__key chart-legend__key--student @(low ? "is-low" : "")"></span> You</li>
+    <li><span class="chart-legend__key chart-legend__key--class"></span> Class average</li>
+    <li><span class="chart-legend__key chart-legend__key--threshold"></span> @Model.MinimumPercent&percnt; requirement</li>
+</ul>

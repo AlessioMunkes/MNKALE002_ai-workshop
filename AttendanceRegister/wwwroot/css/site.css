@@ -1347,3 +1347,36 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
 @media (max-width: 900px) {
     .row-actions__end { margin-left: 0; }
 }
+
+/* ------------------------------------------------ two-series trend chart --- */
+/* The student's line is the subject; the class line is context. Weight and
+   opacity carry that, so the two are distinguishable without relying on colour
+   alone. */
+.chart__line--student { stroke: var(--present); stroke-width: 2.6; }
+.chart__line--student.is-low { stroke: var(--absent); }
+
+.chart__line--class {
+    stroke: var(--brand); stroke-width: 1.8; opacity: 0.5;
+    stroke-dasharray: 1 0;               /* solid, but overridden below */
+    animation: none;                     /* the draw-on animation is for one line only */
+    stroke-dashoffset: 0;
+}
+
+.chart__dot { stroke: var(--present); }
+.chart__dot.is-low { stroke: var(--absent); }
+
+.chart-legend {
+    list-style: none; display: flex; flex-wrap: wrap; gap: 18px;
+    margin: 10px 0 0; padding: 0;
+    font-size: 0.85rem; color: var(--ink-2);
+}
+.chart-legend li { display: flex; align-items: center; gap: 8px; }
+
+.chart-legend__key { display: inline-block; width: 22px; height: 3px; border-radius: 2px; }
+.chart-legend__key--student { background: var(--present); height: 4px; }
+.chart-legend__key--student.is-low { background: var(--absent); }
+.chart-legend__key--class { background: var(--brand); opacity: 0.5; }
+.chart-legend__key--threshold {
+    height: 0; border-top: 2px dashed var(--ink-2);
+    border-radius: 0; background: none;
+}
