@@ -2,7 +2,6 @@ using AttendanceRegister.Models.Entities;
 using AttendanceRegister.Models.ViewModels;
 using AttendanceRegister.Repositories;
 using AttendanceRegister.Services.Abstractions;
-using AttendanceRegister.Services.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace AttendanceRegister.Services;
@@ -13,6 +12,7 @@ public sealed class AttendanceService : IAttendanceService
     private readonly ILectureRepository _lectures;
     private readonly IAttendanceRepository _attendance;
     private readonly ICourseContext _courseContext;
+    private readonly ICheckInCodeService _codes;
     private readonly IUnitOfWork _unitOfWork;
 
     public AttendanceService(
@@ -20,12 +20,14 @@ public sealed class AttendanceService : IAttendanceService
         ILectureRepository lectures,
         IAttendanceRepository attendance,
         ICourseContext courseContext,
+        ICheckInCodeService codes,
         IUnitOfWork unitOfWork)
     {
         _students = students;
         _lectures = lectures;
         _attendance = attendance;
         _courseContext = courseContext;
+        _codes = codes;
         _unitOfWork = unitOfWork;
     }
 
@@ -110,10 +112,13 @@ public sealed class AttendanceService : IAttendanceService
                 "No session is open for check-in right now. Check-in opens when your lecturer starts it, and closes automatically.");
         }
 
-        if (!lecture.CodeMatches(code))
+        if (!_codes.Matches(lecture, code))
         {
+            // Codes rotate, so "wrong" and "expired" look identical from here.
+            // Saying so keeps a student who typed correctly but slowly from
+            // concluding they cannot read.
             return new CheckInOutcome(false,
-                $"That code does not match the one for {lecture.SessionDate:d MMMM yyyy}. Check the projector and try again.");
+                $"That code is not the one on screen for {lecture.SessionDate:d MMMM yyyy}. It changes every {_codes.StepSeconds} seconds \u2014 read the current one and try again.");
         }
 
         var existing = await _attendance.FindAsync(lecture.Id, studentId, cancellationToken);
@@ -135,6 +140,15 @@ public sealed class AttendanceService : IAttendanceService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new CheckInOutcome(true, $"Recorded. You are marked present for {lecture.SessionDate:d MMMM yyyy}.");
+    }
+
+    public async Task<CheckInProgress> GetCheckInProgressAsync(int lectureId,
+        CancellationToken cancellationToken = default)
+    {
+        var records = await _attendance.GetForLectureAsync(lectureId, cancellationToken);
+        var enrolled = await _students.CountAsync(cancellationToken);
+
+        return new CheckInProgress(records.Count(r => r.IsCounted), records.Count, enrolled);
     }
 
     public async Task<List<RegisterRow>> GetRegisterAsync(int lectureId,
@@ -252,9 +266,10 @@ public sealed class AttendanceService : IAttendanceService
             alreadyOpen.CloseCheckIn();
         }
 
-        var code = lecture.OpenCheckIn(TimeSpan.FromMinutes(Math.Clamp(minutes, 1, 240)), () => CheckInCodeGenerator.Generate());
+        lecture.OpenCheckIn(TimeSpan.FromMinutes(Math.Clamp(minutes, 1, 240)), _codes.NewSecret());
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return code;
+
+        return _codes.CurrentCode(lecture) ?? string.Empty;
     }
 
     public async Task CloseCheckInAsync(int lectureId, CancellationToken cancellationToken = default)

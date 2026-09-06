@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<CourseOptions>(builder.Configuration.GetSection(CourseOptions.SectionName));
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.Configure<BrandingOptions>(builder.Configuration.GetSection(BrandingOptions.SectionName));
+builder.Services.Configure<CheckInOptions>(builder.Configuration.GetSection(CheckInOptions.SectionName));
 
 // -------------------------------------------------------------- data layer --
 var connectionString = builder.Configuration.GetConnectionString("AttendanceDatabase")
@@ -38,9 +39,12 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // ---------------------------------------------------------------- services --
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
+builder.Services.AddSingleton<ICheckInCodeService, CheckInCodeService>();
 builder.Services.AddScoped<ICourseContext, CourseContext>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IStudentAdminService, StudentAdminService>();
+builder.Services.AddScoped<ISessionAdminService, SessionAdminService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAttendanceQueryService, AttendanceQueryService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();

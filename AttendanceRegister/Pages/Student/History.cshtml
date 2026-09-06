@@ -11,7 +11,7 @@
 
 @if (Model.Rows.Count == 0)
 {
-    <p class="empty">No sessions have been captured yet.</p>
+    <partial name="_EmptyState" model="@(new EmptyState { Glyph = "register", Title = "Nothing captured yet", Message = "Your sessions will appear here as they are recorded, newest first, with how each one was captured." })" />
 }
 else
 {

@@ -5,6 +5,9 @@ namespace AttendanceRegister.Services.Abstractions;
 
 public sealed record CheckInOutcome(bool Success, string Message);
 
+/// <summary>How much of the class has been captured for one session so far.</summary>
+public sealed record CheckInProgress(int Present, int Recorded, int Enrolled);
+
 public interface IAttendanceService
 {
     Task<StudentAttendanceSummary> GetSummaryAsync(int studentId, CancellationToken cancellationToken = default);
@@ -13,6 +16,9 @@ public interface IAttendanceService
     Task<Lecture?> GetOpenSessionAsync(CancellationToken cancellationToken = default);
 
     Task<CheckInOutcome> CheckInAsync(int studentId, string code, CancellationToken cancellationToken = default);
+
+    /// <summary>Counts behind the live tally on the projector.</summary>
+    Task<CheckInProgress> GetCheckInProgressAsync(int lectureId, CancellationToken cancellationToken = default);
 
     Task<List<RegisterRow>> GetRegisterAsync(int lectureId, CancellationToken cancellationToken = default);
     Task<int> SaveRegisterAsync(int lectureId, IReadOnlyDictionary<int, AttendanceStatus> statuses,

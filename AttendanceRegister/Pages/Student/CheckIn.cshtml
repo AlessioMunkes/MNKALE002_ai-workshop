@@ -1,0 +1,55 @@
+@page "{code?}"
+@model AttendanceRegister.Pages.Student.CheckInModel
+@{
+    ViewData["Title"] = "Check in";
+}
+
+<section class="panel panel--narrow rise">
+    <header class="page-head page-head--centred">
+        <p class="eyebrow">Attendance</p>
+        <h1 class="page-head__title">@Model.Headline</h1>
+    </header>
+
+    <partial name="_ValidationSummary" model="ModelState" />
+
+    @if (Model.Session is null)
+    {
+        <p class="empty">
+            No session is open for check-in at the moment. Check-in opens when your lecturer starts it
+            and closes on its own. If the lecture has already ended,
+            <a asp-page="/Student/Queries">raise a query</a> instead.
+        </p>
+        <p class="form__actions"><a class="btn" asp-page="/Student/Index">Back to my dashboard</a></p>
+    }
+    else
+    {
+        <dl class="deflist">
+            <dt>Session</dt>
+            <dd>@Model.Session.SessionDate.ToString("dddd d MMMM yyyy")</dd>
+            @if (!string.IsNullOrWhiteSpace(Model.Session.Venue))
+            {
+                <dt>Venue</dt>
+                <dd>@Model.Session.Venue</dd>
+            }
+            <dt>Closes at</dt>
+            <dd>@Model.ClosesAt</dd>
+        </dl>
+
+        <form method="post" class="form">
+            <div class="field">
+                <label class="label" asp-for="Code">
+                    Session code
+                    <span class="hint" tabindex="0" data-tip="Filled in for you when you arrive by scanning. Type it if you came here some other way.">?</span>
+                </label>
+                <input class="input input--code" asp-for="Code" maxlength="8" autocomplete="off"
+                       spellcheck="false" placeholder="ABC234" />
+                <span class="field__error" asp-validation-for="Code"></span>
+            </div>
+
+            @* The scan lands on a GET, which only shows this confirmation. The
+               record is written by the POST below, so nothing is captured by a
+               link preview or a page refresh. *@
+            <button type="submit" class="btn btn--lg btn--block">Confirm I am here</button>
+        </form>
+    }
+</section>

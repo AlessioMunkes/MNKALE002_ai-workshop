@@ -68,7 +68,7 @@ public sealed class LectureRepository : EfRepository<Lecture>, ILectureRepositor
     {
         var now = DateTime.UtcNow;
         return await Set.Where(l => l.CourseId == courseId
-                                 && l.CheckInCode != null
+                                 && l.CheckInSecret != null
                                  && l.CheckInClosesAtUtc != null
                                  && l.CheckInClosesAtUtc > now)
                         .OrderByDescending(l => l.SessionDate)

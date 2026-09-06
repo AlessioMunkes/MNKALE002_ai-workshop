@@ -12,6 +12,9 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.104.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
+    <!-- Pure managed QR generation. No System.Drawing, so it runs the same on
+         Windows, macOS and Linux, and emits SVG we can inline directly. -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
   <ItemGroup>

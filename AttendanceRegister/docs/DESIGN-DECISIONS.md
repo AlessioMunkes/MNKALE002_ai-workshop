@@ -436,3 +436,258 @@ comes from a `has-toggle` class the script adds at the same time.
 
 The button is `type="button"`. Left as the default `submit`, revealing a
 password inside a form would submit it.
+
+---
+
+## 25. The QR encodes a URL, and scanning it does not mark anyone present
+
+A lecturer opens check-in and puts the projector view on screen: the code at
+the size of the room, and beside it a QR code. A student either types the code
+or points a phone camera at the QR.
+
+**The QR carries an ordinary URL** to `/Student/CheckIn/{code}` — no app to
+install, no in-page camera. Reading a QR in the browser would mean asking for
+camera permission and shipping a decoding library, to reproduce something every
+phone camera has done natively for years, less reliably.
+
+**Scanning lands on a GET that shows a confirmation and records nothing.** The
+attendance is written by the POST behind the button. A GET that changed the
+register would be a real problem here: chat apps and mail clients fetch links
+to build previews, so pasting the URL into a group chat would have marked the
+whole group present.
+
+**The page lives in the Student folder**, so an unauthenticated scan is bounced
+through sign-in and returned by the cookie handler's `returnUrl`. The student
+never has to find the page again by hand.
+
+**One trap this design has to warn about.** Run the app locally and the QR
+encodes `localhost`, which on a phone resolves to the phone. Every scan fails,
+and nothing about the failure points at why. `CheckIn:PublicBaseUrl` overrides
+the host, and the sessions screen detects the loopback case and says so on the
+page rather than leaving it to be discovered in front of a lecture theatre.
+
+**QRCoder** generates the symbol as SVG, so it is markup rather than an image
+file, scales to any projector, and needs no System.Drawing — the same code runs
+on Windows, macOS and Linux. Error correction is set to Q, around a quarter of
+the symbol, because a projected code gets read at an angle from the back of a
+room. Generation failure returns null and the page falls back to the text code
+rather than showing a broken image.
+
+---
+
+## 26. Three charts, and what each one is for
+
+**Bars** answer "how was that lecture?" — one session at a time.
+
+**The cumulative line** answers "which way is the class going?" A run of poor
+sessions bends the line even when no single bar looks alarming, which is the
+failure the bar chart cannot show. It is built from the same per-session
+figures the bars use, so the two cannot disagree.
+
+**The heatmap** answers "what does the register look like?" A row per student, a
+column per session, ordered by rate so the students in difficulty form a band
+along the bottom instead of being scattered. It is the only view that shows a
+*column* problem — a session most of the class missed, worth knowing whether
+something clashed that day.
+
+**The sparkline** on each class list row plots the running rate rather than
+individual sessions. Individual sessions at twenty pixels tall are a barcode;
+a running rate has a direction you can read at a glance.
+
+**Shared geometry.** `PlotArea` owns the arithmetic every chart needs: index to
+x, percentage to y, rounding to a sane number of decimals. The first chart did
+this inline in a page model; the second would have copied it, and by the third
+the copies would have disagreed about padding. Same reasoning as
+`AttendanceRules`, applied earlier this time.
+
+**Invariant culture on every coordinate.** A comma decimal separator produces
+silently invalid SVG — a chart that renders as nothing on a machine with
+different regional settings, and looks fine on the developer's.
+
+**Still no charting library.** Motion UI, Bklit and the rest are React and
+shadcn; adopting one means a bundler, Tailwind and a component framework for
+three pictures of data this application already has in memory. Server-rendered
+SVG prints, survives scripts being blocked, and cannot break because a pinned
+CDN version moved.
+
+---
+
+## 27. Codes are derived from the clock, not stored and rewritten
+
+The check-in code changes every 30 seconds. It is an HMAC of a per-session
+secret and the current 30-second step, in the manner of an authenticator app.
+
+**The obvious implementation was a background job** regenerating the code every
+30 seconds and writing it to the database. That needs a hosted service, a
+write per rotation per open session, and it still races: a student who reads
+the screen at second 29 and presses the button at second 31 submits a code the
+database no longer holds, and is told they typed it wrongly.
+
+Deriving instead makes validation a pure function of the moment it happens.
+Nothing is scheduled, nothing is written, and the tolerance is an explicit
+parameter rather than an accident of timing.
+
+**One step of grace.** A submitted code is checked against the current step and
+the previous one, so any code is usable for between 30 and 60 seconds. Long
+enough to read and type; short enough that passing it to somebody off campus is
+a live coordination problem rather than a message. Both steps are always
+checked, even after a match, so the time taken does not reveal which one hit.
+
+**No schema change.** The secret is stored in the column that used to hold the
+literal code. The meaning of the column changed; its shape did not, so an
+existing database keeps working and nobody has to delete their data to take
+this update.
+
+**What this does and does not achieve.** It raises the cost of relaying a code
+from "send a message" to "coordinate within a minute, repeatedly". It does not
+prove presence — the client is controlled by the person being checked, so
+nothing it reports can be trusted. Anything stronger has to come from a source
+the student does not control, which in this system means cross-referencing the
+tutor's uploaded register against self-recorded check-ins.
+
+**The clock is now load-bearing.** If the server's time drifts, every code is
+wrong and no diagnostic points at why. On one machine that is fine. Across
+several, they would all need to agree.
+
+---
+
+## 28. Two screens, one shape
+
+The sessions card and the projector view both render `_CheckInCode` from the
+same `CheckInDisplay` model, differing only by a variant class.
+
+**Chosen because** two screens showing the same rotating value is exactly the
+situation where a duplicated implementation causes the worst kind of bug: a
+projector showing one code while the lecturer's laptop shows another, with no
+way to tell from the back of a room which is right.
+
+The countdown runs in the browser and the server is asked only when a step
+actually elapses — about two requests a minute rather than sixty. The page
+renders a correct code on its own, so with scripting off the screen is right
+for up to thirty seconds and a refresh corrects it. The polling is a
+convenience, not a dependency.
+
+**The ring drains rather than counting down in numerals**, because the useful
+question from thirty rows back is "is it about to change?", and a shape answers
+that faster than a number. The new code fades and slides in rather than
+appearing, which is the difference between reading "it changed" and wondering
+"did I misread that?"
+
+---
+
+## 29. The tally is the reason to have a projector view at all
+
+The projector shows how many of the class have checked in, rising as they do,
+with a bar and a brief lift on each arrival.
+
+**Chosen because** it turns a screen that only students look at into one the
+lecturer looks at too. "34 of 104" two minutes into a lecture is immediately
+actionable — leave the window open longer, or say the code out loud because the
+back row cannot read it.
+
+**Polling every five seconds, not every second.** The countdown ring runs
+locally on a one-second tick and needs no server at all. The tally is the only
+thing that has to come from the server, and five seconds is the point where it
+still feels live while a projector left open for an hour makes 720 requests
+rather than 3600. A code step elapsing also triggers a poll, so the code and
+the tally arrive in the same response rather than in two.
+
+---
+
+## 30. The confirmation animates the number that changed
+
+A successful check-in returns to the dashboard with a drawn tick, and the
+attendance figure counts up from the rate before the check-in to the rate after
+it.
+
+**Counting from the previous value rather than from zero** is the whole point.
+Sweeping up from nothing is decoration. Climbing from 78.3 to 79.5 shows the
+one thing the student came to the page to find out, and shows it as a change
+rather than as a number they have to compare against a figure they no longer
+have on screen.
+
+**The flash banner is suppressed for this one case.** Leaving it would have put
+the same sentence twice on the same screen, once in a strip at the top and once
+inside the confirmation.
+
+**What this is not.** An earlier plan was to fill the strip square optimistically
+the moment the button was pressed, before the server replied. Rotating codes
+make that a bad trade: a code that expired mid-typing is a *likely* failure, not
+a rare one, and filling a square green and then emptying it again for something
+the student did nothing wrong to cause is worse than the wait. Optimistic UI
+suits operations that almost always succeed. This one does not.
+
+---
+
+## 31. Empty states say what belongs there
+
+Each empty list now shows a faint glyph, a title, a sentence explaining what
+would fill it, and where useful the action that would.
+
+**The glyphs are built from the interface's own shapes** — an unfilled
+attendance strip, a session grid, a query card — rather than stock
+illustration. Stock reads as borrowed next to a hand-built interface, and it
+would have been the one part of this system that did not come from a decision
+about this system.
+
+**Why it is worth doing at all.** A fresh install shows empty states almost
+everywhere, and that is often the first minute anyone spends with the
+application. A grey box with one sentence says a screen is empty; it does not
+say what the screen is for.
+
+Skeleton loaders were considered and rejected: every table here is rendered
+server-side, so by the time the browser has markup it already has the data.
+A skeleton would show fake rows for a few milliseconds before real ones — pure
+theatre. They would earn their place only if a table later loaded over fetch.
+
+---
+
+## 32. Every figure on the dashboard goes somewhere
+
+The four tiles on the overview are links: enrolled opens the class list,
+sessions captured opens the sessions screen, the class average scrolls to the
+trend chart, and open queries opens the queue filtered to open. Every bar on
+the per-session chart opens that session.
+
+**Chosen because** a number on a dashboard that cannot be opened is a dead end.
+The natural next question after "79.6%" is "which sessions dragged it down",
+and the answer was already on the page — it just was not reachable from the
+figure that prompted the question.
+
+**The tiles are anchors, not cards with a nested link.** A whole tile that
+responds to a click but is not a link cannot be tabbed to, opened in a new tab,
+or announced as a link by a screen reader. Making the tile itself the anchor
+costs one wrapper element and gets all of that for nothing.
+
+**The bars are SVG anchors** wrapping the rect, so the hit area is exactly the
+bar. The tooltip says the bar opens the session, because a shape that is
+clickable without saying so is only discoverable by accident.
+
+**Scroll-margin on the trend section.** Jumping to an id puts the target flush
+against the top of the viewport, which on this layout means underneath the
+masthead. A brief ring on `:target` marks which block was jumped to, since a
+page that silently repositions is disorienting.
+
+---
+
+## 33. Reading a session and editing it are different screens
+
+`/Lecturer/Session/{id}` answers "what happened at this lecture?" The existing
+register screen answers "let me change this."
+
+**Chosen because** they are asked at different moments and want different
+shapes. The register is a hundred dropdowns and a save button; loading the
+comparison figures, the capture breakdown and the query list into it would make
+the screen slower to open and harder to scan for the one thing a lecturer is
+usually there to do. Keeping them apart lets each be good at one job, and the
+overview links to the register for the moment reading turns into editing.
+
+**Built on the class list rather than beside it.** `GetClassListAsync` already
+returns every student with a cell per session and a computed rate, which is
+most of what this screen needs. The only extra queries are how each record on
+this lecture was captured, a light aggregate for the rank and the term mean, and
+the queries attached to it.
+
+**The student grid is grouped by status, not sorted by name.** Alphabetical
+order scatters absences through a hundred tiles and shows nothing. Grouped, a
+pale block is immediately the size of the problem.

@@ -1,0 +1,65 @@
+@model CheckInDisplay
+@{
+    var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+    // 2*pi*r for the countdown ring, r = 16.
+    const double circumference = 100.53;
+    var dashArray = circumference.ToString("0.##", culture);
+    var dashOffset = (circumference * (1 - Model.Fraction)).ToString("0.##", culture);
+    var barWidth = Model.CheckedInPercent.ToString("0.#", culture);
+}
+
+<div class="live-code live-code--@Model.Variant"
+     data-checkin-pulse
+     data-pulse-url="@Model.PulseUrl"
+     data-step="@Model.StepSeconds"
+     data-remaining="@Model.SecondsRemaining">
+
+    <div class="live-code__main">
+        <p class="live-code__label">
+            Type this code
+            <span class="live-code__ring" aria-hidden="true">
+                <svg viewBox="0 0 36 36">
+                    <circle class="live-code__ring-track" cx="18" cy="18" r="16"></circle>
+                    <circle class="live-code__ring-progress" cx="18" cy="18" r="16"
+                            stroke-dasharray="@dashArray" stroke-dashoffset="@dashOffset"></circle>
+                </svg>
+            </span>
+        </p>
+
+        @* aria-live so a screen reader announces the new code rather than
+           silently replacing it. *@
+        <p class="live-code__value" data-code aria-live="polite">@Model.Code</p>
+
+        <p class="live-code__meta">
+            Changes every @Model.StepSeconds seconds &middot;
+            <span data-countdown>@Model.SecondsRemaining</span>s left
+        </p>
+
+        @if (Model.ShowsCounter)
+        {
+            <div class="tally" data-tally>
+                <p class="tally__value">
+                    <span data-present>@Model.PresentCount</span>
+                    <span class="tally__of">of</span>
+                    <span data-enrolled>@Model.Enrolled</span>
+                    <span class="tally__word">checked in</span>
+                </p>
+                <div class="tally__track">
+                    <span class="tally__fill" data-tally-fill style="width:@(barWidth)%"></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Model.QrSvg is not null)
+    {
+        <figure class="live-code__qr">
+            <div class="qr" data-qr>@Html.Raw(Model.QrSvg)</div>
+            @if (!string.IsNullOrWhiteSpace(Model.DisplayUrl))
+            {
+                <figcaption class="num">@Model.DisplayUrl</figcaption>
+            }
+        </figure>
+    }
+</div>

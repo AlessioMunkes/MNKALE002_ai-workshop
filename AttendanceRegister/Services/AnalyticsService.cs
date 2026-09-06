@@ -181,6 +181,109 @@ public sealed class AnalyticsService : IAnalyticsService
         return rows;
     }
 
+    // ------------------------------------------------------- session overview --
+
+    /// <summary>
+    /// Built on top of the class list rather than beside it. That already
+    /// carries every student with a cell per session and a computed rate, which
+    /// is most of what this screen needs — the only extra query is for how each
+    /// record on this one lecture was captured.
+    /// </summary>
+    public async Task<SessionOverview?> GetSessionOverviewAsync(int lectureId,
+        CancellationToken cancellationToken = default)
+    {
+        var course = await _courseContext.GetAsync(cancellationToken);
+
+        var lecture = await _db.Lectures.AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == lectureId && l.CourseId == course.Id, cancellationToken);
+
+        if (lecture is null)
+        {
+            return null;
+        }
+
+        var classList = await GetClassListAsync(cancellationToken);
+
+        var records = await _db.AttendanceRecords.AsNoTracking()
+            .Where(r => r.LectureId == lectureId)
+            .ToDictionaryAsync(r => r.StudentId, cancellationToken);
+
+        var attendees = classList
+            .Select(row =>
+            {
+                records.TryGetValue(row.Summary.StudentId, out var record);
+                return new SessionAttendee
+                {
+                    StudentId = row.Summary.StudentId,
+                    StudentNumber = row.Summary.StudentNumber,
+                    DisplayName = row.Summary.DisplayName,
+                    Email = row.Summary.Email,
+                    Status = record?.Status,
+                    Source = record?.Source,
+                    RecordedAtUtc = record?.RecordedAtUtc,
+                    Note = record?.Note,
+                    OverallPercent = row.Summary.Percentage
+                };
+            })
+            .ToList();
+
+        var captured = records.Values
+            .GroupBy(r => r.Source)
+            .Select(g => new CaptureBreakdown(g.Key, g.Count()))
+            .OrderByDescending(c => c.Count)
+            .ToList();
+
+        // Rank and average come from a light aggregate over every session, not
+        // from loading their records.
+        var enrolled = classList.Count;
+
+        var perSession = await _db.Lectures.AsNoTracking()
+            .Where(l => l.CourseId == course.Id)
+            .Select(l => new
+            {
+                l.Id,
+                Counted = l.AttendanceRecords.Count(r => AttendanceRules.Counted.Contains(r.Status)),
+                Recorded = l.AttendanceRecords.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        var capturedSessions = perSession
+            .Where(s => s.Recorded > 0)
+            .Select(s => new { s.Id, Percent = enrolled == 0 ? 0 : s.Counted * 100.0 / enrolled })
+            .OrderByDescending(s => s.Percent)
+            .ToList();
+
+        var average = capturedSessions.Count == 0 ? 0 : Math.Round(capturedSessions.Average(s => s.Percent), 1);
+        var rank = capturedSessions.FindIndex(s => s.Id == lectureId) + 1;
+
+        var queries = await _db.AttendanceQueries.AsNoTracking()
+            .Include(q => q.Student)
+            .Include(q => q.Lecture)
+            .Where(q => q.LectureId == lectureId)
+            .OrderBy(q => q.Status)
+            .ThenByDescending(q => q.SubmittedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        return new SessionOverview
+        {
+            LectureId = lecture.Id,
+            SessionDate = lecture.SessionDate,
+            StartTime = lecture.StartTime,
+            EndTime = lecture.EndTime,
+            Topic = lecture.Topic,
+            Venue = lecture.Venue,
+            IsCheckInOpen = lecture.IsCheckInOpen,
+            Enrolled = enrolled,
+            MinimumPercent = course.MinimumAttendancePercent,
+            Attendees = attendees,
+            Captured = captured,
+            Queries = queries,
+            CourseAverage = average,
+            Rank = rank,
+            SessionsCaptured = capturedSessions.Count
+        };
+    }
+
     // -------------------------------------------------------- student detail --
 
     public async Task<StudentAttendanceDetail?> GetStudentDetailAsync(int studentId,

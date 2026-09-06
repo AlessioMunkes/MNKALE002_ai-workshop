@@ -1,0 +1,19 @@
+@* One dialog per page, filled in by confirm-delete.js from the data attributes
+   on whichever control was clicked. Thirty rows would otherwise mean thirty
+   copies of the same markup. *@
+<dialog id="confirm-delete" class="help-dialog confirm-dialog" aria-labelledby="confirm-delete-title">
+    <form method="post" asp-page-handler="Delete" class="help-dialog__body">
+        <input type="hidden" name="lectureId" data-confirm-id value="" />
+
+        <p class="eyebrow">This cannot be undone</p>
+        <h2 class="help-dialog__title" id="confirm-delete-title" data-confirm-title>Delete this session?</h2>
+
+        <p data-confirm-detail></p>
+        <p class="confirm-dialog__warning" data-confirm-warning hidden></p>
+
+        <div class="help-dialog__actions">
+            <button type="button" class="btn btn--ghost btn--sm" data-confirm-cancel>Keep it</button>
+            <button type="submit" class="btn btn--danger btn--sm" autofocus>Yes, delete it</button>
+        </div>
+    </form>
+</dialog>

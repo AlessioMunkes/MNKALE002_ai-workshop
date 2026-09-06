@@ -22,6 +22,16 @@ public class IndexModel : PageModel
     public StudentAttendanceSummary Summary { get; private set; } = new();
     public Lecture? OpenSession { get; private set; }
 
+    /// <summary>Set for one render after a successful check-in.</summary>
+    public string? JustCheckedIn { get; private set; }
+
+    /// <summary>
+    /// The rate before this check-in, so the figure can count up from where it
+    /// was rather than from zero. Attendance climbing by one session is the
+    /// thing worth showing; a number sweeping up from nothing is just motion.
+    /// </summary>
+    public double PreviousPercent { get; private set; }
+
     [BindProperty]
     [Required(ErrorMessage = "Enter the six-character code shown in the lecture.")]
     [StringLength(8, MinimumLength = 4, ErrorMessage = "Session codes are six characters long.")]
@@ -47,8 +57,7 @@ public class IndexModel : PageModel
             return Page();
         }
 
-        TempData["Flash"] = outcome.Message;
-        TempData["FlashKind"] = "success";
+        TempData["CheckedIn"] = outcome.Message;
         return RedirectToPage();
     }
 
@@ -57,5 +66,11 @@ public class IndexModel : PageModel
         var cancellationToken = HttpContext.RequestAborted;
         Summary = await _attendance.GetSummaryAsync(_currentUser.RequireUserId(), cancellationToken);
         OpenSession = await _attendance.GetOpenSessionAsync(cancellationToken);
+
+        JustCheckedIn = TempData["CheckedIn"] as string;
+
+        PreviousPercent = Summary.SessionsHeld == 0 || Summary.SessionsAttended == 0
+            ? 0
+            : Math.Round((Summary.SessionsAttended - 1) * 100.0 / Summary.SessionsHeld, 1);
     }
 }

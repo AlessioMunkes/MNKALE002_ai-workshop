@@ -63,7 +63,10 @@ public sealed class AttendanceDbContext : DbContext
             entity.HasKey(l => l.Id);
             entity.Property(l => l.Topic).HasMaxLength(200);
             entity.Property(l => l.Venue).HasMaxLength(100);
-            entity.Property(l => l.CheckInCode).HasMaxLength(12);
+            // Mapped to the column that used to hold a literal code. Codes now
+            // rotate and are derived from this secret, so the meaning changed but
+            // the schema did not — an existing database keeps working.
+            entity.Property(l => l.CheckInSecret).HasColumnName("CheckInCode").HasMaxLength(24);
 
             entity.HasOne(l => l.Course)
                   .WithMany(c => c.Lectures)

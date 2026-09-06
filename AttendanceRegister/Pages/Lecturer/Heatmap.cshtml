@@ -1,0 +1,109 @@
+@page
+@using AttendanceRegister.Infrastructure.Charts
+@model AttendanceRegister.Pages.Lecturer.HeatmapModel
+@{
+    ViewData["Title"] = "Class heatmap";
+
+    const double cellWidth = 15;
+    const double cellHeight = 9;
+    const double gutter = 104;
+    const double headerHeight = 26;
+
+    var map = Model.Heatmap;
+    var width = gutter + map.SessionDates.Count * cellWidth + 8;
+    var height = headerHeight + map.Rows.Count * cellHeight + 6;
+    var labelEvery = (int)Math.Ceiling(Math.Max(map.SessionDates.Count, 1) / 9.0);
+    var cutoff = map.FirstRowBelowThreshold;
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@Model.CourseCode</p>
+        <h1 class="page-head__title">Class heatmap</h1>
+        <p class="page-head__lede">
+            A row per student, a column per session, strongest attendance at the top.
+            A pale column is a session most of the class missed.
+        </p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Students">Class list</a>
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Index">Overview</a>
+    </div>
+</header>
+
+<section class="card">
+    @if (!map.HasData)
+    {
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "register", Title = "Nothing to map yet", Message = "The heatmap needs at least one captured session. Upload a register or open check-in for a lecture.", ActionText = "Upload a register", ActionPage = "/Lecturer/Import" })" />
+    }
+    else
+    {
+        <ul class="legend">
+            <li><span class="strip__cell is-present"></span> Present</li>
+            <li><span class="strip__cell is-late"></span> Late</li>
+            <li><span class="strip__cell is-excused"></span> Excused</li>
+            <li><span class="strip__cell is-absent"></span> Absent</li>
+            <li><span class="strip__cell is-unrecorded"></span> Not captured</li>
+        </ul>
+
+        <div class="heatmap">
+            <svg viewBox="0 0 @PlotArea.N(width) @PlotArea.N(height)" role="img"
+                 aria-label="Attendance for @map.Rows.Count students across @map.SessionDates.Count sessions"
+                 preserveAspectRatio="xMinYMin meet">
+
+                <g class="heatmap__dates">
+                    @for (var c = 0; c < map.SessionDates.Count; c++)
+                    {
+                        if (c % labelEvery != 0) { continue; }
+                        var x = gutter + c * cellWidth + cellWidth / 2;
+                        <g>
+                            <text class="heatmap__date" x="@PlotArea.N(x)" y="16"
+                                  text-anchor="middle">@map.SessionDates[c].ToString("d MMM")</text>
+                        </g>
+                    }
+                </g>
+
+                @for (var r = 0; r < map.Rows.Count; r++)
+                {
+                    var row = map.Rows[r];
+                    var y = headerHeight + r * cellHeight;
+                    var byDate = row.Cells.ToDictionary(x => x.SessionDate);
+                    var rowUrl = Url.Page("/Lecturer/StudentDetail", new { studentId = row.StudentId });
+
+                    <a class="heatmap__row" href="@rowUrl">
+                        <title>@row.DisplayName (@row.StudentNumber) — @row.Percentage.ToString("0.#")%</title>
+
+                        <rect class="heatmap__hit" x="0" y="@PlotArea.N(y)"
+                              width="@PlotArea.N(width)" height="@PlotArea.N(cellHeight)"></rect>
+
+                        <text class="heatmap__label" x="0" y="@PlotArea.N(y + cellHeight - 1.5)">@row.StudentNumber</text>
+
+                        @for (var c = 0; c < map.SessionDates.Count; c++)
+                        {
+                            var cell = byDate.TryGetValue(map.SessionDates[c], out var found) ? found : null;
+                            var modifier = cell?.CssModifier ?? "is-unrecorded";
+                            var x = gutter + c * cellWidth;
+                            <rect class="heatmap__cell @modifier"
+                                  x="@PlotArea.N(x)" y="@PlotArea.N(y + 1)"
+                                  width="@PlotArea.N(cellWidth - 2)" height="@PlotArea.N(cellHeight - 2)" rx="1.5"></rect>
+                        }
+                    </a>
+                }
+
+                @if (cutoff > 0)
+                {
+                    var cutY = headerHeight + cutoff * cellHeight;
+                    <g class="heatmap__cutoff">
+                        <line x1="0" x2="@PlotArea.N(width)" y1="@PlotArea.N(cutY)" y2="@PlotArea.N(cutY)"></line>
+                        <text class="heatmap__cutoff-label" x="0" y="@PlotArea.N(cutY - 2.5)">@Model.MinimumPercent&#37; line</text>
+                    </g>
+                }
+            </svg>
+        </div>
+
+        <p class="muted">
+            @map.Rows.Count students &middot; @map.SessionDates.Count sessions &middot;
+            click a row to open that student.
+        </p>
+    }
+</section>

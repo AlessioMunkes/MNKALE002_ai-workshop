@@ -1,0 +1,67 @@
+@model EmptyState
+
+@* The glyphs are drawn from the same shapes the interface already uses — an
+   unfilled attendance strip, a session grid, a query card. Stock illustration
+   would read as borrowed next to everything else here. *@
+<div class="empty-state">
+    <div class="empty-state__glyph" aria-hidden="true">
+        @switch (Model.Glyph)
+        {
+            case "sessions":
+                <svg viewBox="0 0 96 64">
+                    <rect class="es-line" x="2" y="10" width="92" height="52" rx="5"></rect>
+                    <line class="es-line" x1="2" y1="24" x2="94" y2="24"></line>
+                    <line class="es-line" x1="20" y1="2" x2="20" y2="16"></line>
+                    <line class="es-line" x1="76" y1="2" x2="76" y2="16"></line>
+                    @for (var r = 0; r < 2; r++)
+                    {
+                        for (var c = 0; c < 6; c++)
+                        {
+                            <rect class="es-cell" x="@(11 + c * 13)" y="@(32 + r * 14)" width="9" height="9" rx="2"></rect>
+                        }
+                    }
+                </svg>
+                break;
+
+            case "queries":
+                <svg viewBox="0 0 96 64">
+                    <path class="es-line" d="M6 8h68a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H30L16 56V44H6a5 5 0 0 1-5-5V13a5 5 0 0 1 5-5z"></path>
+                    <line class="es-line" x1="14" y1="20" x2="62" y2="20"></line>
+                    <line class="es-line" x1="14" y1="30" x2="48" y2="30"></line>
+                </svg>
+                break;
+
+            case "students":
+                <svg viewBox="0 0 96 64">
+                    <circle class="es-line" cx="34" cy="22" r="11"></circle>
+                    <path class="es-line" d="M12 58c0-12 10-19 22-19s22 7 22 19"></path>
+                    <circle class="es-line" cx="70" cy="26" r="8"></circle>
+                    <path class="es-line" d="M58 58c0-9 6-14 14-14s14 5 14 14"></path>
+                </svg>
+                break;
+
+            default:
+                @* An attendance strip with nothing filled in: literally the
+                   shape of what is missing. *@
+                <svg viewBox="0 0 96 64">
+                    <line class="es-line" x1="4" y1="14" x2="92" y2="14"></line>
+                    @for (var r = 0; r < 3; r++)
+                    {
+                        for (var c = 0; c < 7; c++)
+                        {
+                            <rect class="es-cell" x="@(5 + c * 13)" y="@(24 + r * 13)" width="10" height="10" rx="2"></rect>
+                        }
+                    }
+                </svg>
+                break;
+        }
+    </div>
+
+    <p class="empty-state__title">@Model.Title</p>
+    <p class="empty-state__message">@Model.Message</p>
+
+    @if (Model.HasAction)
+    {
+        <a class="btn btn--sm" asp-page="@Model.ActionPage">@Model.ActionText</a>
+    }
+</div>

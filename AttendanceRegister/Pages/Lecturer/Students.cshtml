@@ -16,6 +16,7 @@
             <a class="btn btn--ghost btn--sm" href="@Model.BulkEmailHref">Email the @Model.BelowThreshold below @Model.MinimumPercent&percnt;</a>
         }
         <a class="btn btn--sm" asp-page="/Lecturer/StudentNew">Add a student</a>
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Heatmap">Heatmap</a>
         <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Export">Download register</a>
     </div>
 </header>
@@ -45,11 +46,7 @@
 <section class="card">
     @if (Model.Rows.Count == 0)
     {
-        <p class="empty">
-            Nobody is enrolled yet.
-            <a asp-page="/Lecturer/StudentNew">Add a student</a> or
-            <a asp-page="/Lecturer/Import">upload a register</a>.
-        </p>
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "students", Title = "Nobody is enrolled yet", Message = "Upload a class list to bring everyone in at once, or add students one at a time.", ActionText = "Upload a register", ActionPage = "/Lecturer/Import" })" />
     }
     else
     {
@@ -65,6 +62,7 @@
                     <th scope="col" data-lock>Student</th>
                     <th scope="col">Number</th>
                     <th scope="col" data-nosort data-label="Attendance pattern">Pattern</th>
+                    <th scope="col" data-nosort data-label="Trend">Trend</th>
                     <th scope="col">Attended</th>
                     <th scope="col">Rate</th>
                     <th scope="col" data-filter data-label="Standing">Standing</th>
@@ -90,6 +88,7 @@
                         </th>
                         <td class="num">@row.Summary.StudentNumber</td>
                         <td><partial name="_AttendanceStripMini" model="row.Summary.Cells" /></td>
+                        <td data-value=""><partial name="_Sparkline" model="row.Summary.Cells" /></td>
                         <td class="num" data-sort="@row.Summary.SessionsAttended">@row.Summary.SessionsAttended / @row.Summary.SessionsHeld</td>
                         <td data-value="@(row.Summary.Percentage.ToString("0.#"))">
                             <partial name="_RateBar" model="row.Summary" />

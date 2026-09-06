@@ -872,3 +872,478 @@ th[aria-sort="descending"] .table-sort__arrow { color: var(--brand); }
     opacity: 1;
     height: 32px;
 }
+
+/* =============================================================
+   Charts: cumulative line, sparkline, class heatmap
+   All rendered server-side as SVG, so they print, work with
+   scripts blocked, and cannot break because a CDN moved.
+   ============================================================= */
+
+.chart__area { stroke: none; }
+
+.chart__line {
+    fill: none;
+    stroke: var(--brand);
+    stroke-width: 2.4;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    /* Drawn on load: the term accumulating is the point of this chart. */
+    stroke-dasharray: 2400;
+    stroke-dashoffset: 2400;
+    animation: draw-line 1100ms var(--ease) 120ms forwards;
+}
+.chart__line.is-low { stroke: var(--absent); }
+
+@keyframes draw-line { to { stroke-dashoffset: 0; } }
+
+.chart__dot {
+    fill: var(--surface);
+    stroke: var(--brand);
+    stroke-width: 1.8;
+    opacity: 0;
+    animation: fade-in 400ms var(--ease) 900ms forwards;
+    transition: r var(--fast) var(--ease);
+}
+.chart__line.is-low ~ .chart__dots .chart__dot { stroke: var(--absent); }
+.chart__dot:hover { r: 5.2; }
+
+.sparkline { width: 74px; height: 20px; display: block; overflow: visible; }
+.sparkline__line {
+    fill: none;
+    stroke: var(--brand-lift);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    opacity: 0.85;
+}
+
+/* ------------------------------------------------------------ heatmap --- */
+.heatmap { width: 100%; overflow: auto; max-height: 620px; }
+.heatmap svg { width: 100%; min-width: 560px; height: auto; display: block; }
+
+.heatmap__date { fill: var(--ink-3); font-family: var(--font-data); font-size: 7px; }
+.heatmap__label { fill: var(--ink-3); font-family: var(--font-data); font-size: 6.5px; }
+
+.heatmap__hit { fill: transparent; }
+.heatmap__row { cursor: pointer; }
+.heatmap__row:hover .heatmap__hit { fill: rgba(14, 77, 100, 0.07); }
+.heatmap__row:hover .heatmap__label { fill: var(--brand); }
+.heatmap__row:focus-visible .heatmap__hit { fill: rgba(14, 77, 100, 0.14); }
+
+/* Same vocabulary as the strip: filled means counted, outline means absent,
+   hatch-grey means nobody captured it. */
+.heatmap__cell { fill: transparent; stroke: var(--line-strong); stroke-width: 0.6; }
+.heatmap__cell.is-present    { fill: var(--present); stroke: var(--present); }
+.heatmap__cell.is-late       { fill: var(--late);    stroke: var(--late); }
+.heatmap__cell.is-excused    { fill: var(--excused); stroke: var(--excused); }
+.heatmap__cell.is-absent     { fill: transparent;    stroke: var(--absent); }
+.heatmap__cell.is-unrecorded { fill: var(--canvas);  stroke: var(--line); }
+
+.heatmap__cutoff line { stroke: var(--absent); stroke-width: 1; stroke-dasharray: 4 3; }
+.heatmap__cutoff-label {
+    fill: var(--absent); font-family: var(--font-display);
+    font-size: 6.5px; font-weight: 600; letter-spacing: 0.06em;
+}
+
+/* ---------------------------------------------------------------- QR --- */
+.qr { line-height: 0; }
+.qr svg { display: block; width: 100%; height: auto; max-width: 210px; }
+
+.live { align-items: flex-start; }
+.live__text { flex: 1 1 280px; }
+.live__qr {
+    margin: 0; flex: 0 0 auto; text-align: center;
+    background: #fff; padding: 12px; border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+.live__qr figcaption { margin-top: 8px; font-size: 0.72rem; word-break: break-all; max-width: 210px; }
+
+/* ------------------------------------------------------- projector view --- */
+.projector {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; margin: 0;
+    background: var(--grad-brand); color: #fff; text-align: center;
+}
+.projector__inner { padding: 4vh 4vw; width: min(1400px, 100%); }
+.projector__eyebrow {
+    font-family: var(--font-display); font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    font-size: clamp(0.8rem, 1.6vw, 1.15rem); color: rgba(255, 255, 255, 0.72); margin: 0 0 3vh;
+}
+.projector__grid {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(28px, 6vw, 90px); flex-wrap: wrap;
+}
+.projector__label {
+    font-family: var(--font-display); font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    font-size: clamp(0.75rem, 1.3vw, 1rem); color: rgba(255, 255, 255, 0.66); margin: 0 0 1.5vh;
+}
+.projector__code {
+    font-family: var(--font-data); font-weight: 700;
+    font-size: clamp(3.4rem, 13vw, 12rem); line-height: 1;
+    letter-spacing: 0.1em; margin: 0;
+    text-shadow: 0 6px 30px rgba(0, 0, 0, 0.3);
+}
+.projector__hint { font-size: clamp(0.9rem, 1.7vw, 1.3rem); color: rgba(255, 255, 255, 0.8); margin: 2.5vh 0 0; }
+.projector__url { font-family: var(--font-data); font-size: 0.85em; }
+.projector__qr .qr {
+    background: #fff; padding: clamp(12px, 1.6vw, 22px); border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+.projector__qr .qr svg { max-width: clamp(180px, 26vw, 380px); }
+.projector__footer {
+    margin: 5vh 0 0; font-size: clamp(0.85rem, 1.4vw, 1.1rem); color: rgba(255, 255, 255, 0.6);
+}
+.projector__closed { font-family: var(--font-display); font-size: clamp(2rem, 6vw, 4rem); margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .chart__line { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+    .chart__dot { opacity: 1; animation: none; }
+}
+
+@media print {
+    .heatmap { max-height: none; overflow: visible; }
+    .chart__line { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+    .chart__dot { opacity: 1; animation: none; }
+}
+
+/* =============================================================
+   Rotating check-in code
+   One block, two sizes: a card on the sessions screen and the
+   full-bleed projector view.
+   ============================================================= */
+
+.live-code { display: flex; align-items: center; gap: clamp(20px, 4vw, 70px); flex-wrap: wrap; }
+.live-code__main { flex: 1 1 260px; }
+
+.live-code__label {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 6px;
+    font-family: var(--font-display); font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    font-size: 0.72rem; color: var(--ink-3);
+}
+
+.live-code__value {
+    margin: 0; font-family: var(--font-data); font-weight: 700;
+    font-size: 2.6rem; line-height: 1; letter-spacing: 0.18em;
+    color: var(--brand-dark);
+}
+
+.live-code__meta { margin: 10px 0 0; font-size: 0.83rem; color: var(--ink-3); }
+
+.live-code__qr {
+    margin: 0; flex: 0 0 auto; text-align: center;
+    background: #fff; padding: 12px; border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+.live-code__qr figcaption {
+    margin-top: 8px; font-size: 0.7rem; color: var(--ink-3);
+    word-break: break-all; max-width: 180px;
+}
+.live-code__qr .qr svg { max-width: 170px; }
+
+/* The ring drains rather than counting, so a glance from across a room reads
+   "nearly gone" without anyone having to parse a number. */
+.live-code__ring { display: inline-block; width: 20px; height: 20px; }
+.live-code__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.live-code__ring-track {
+    fill: none; stroke: var(--line); stroke-width: 3.5;
+}
+.live-code__ring-progress {
+    fill: none; stroke: var(--brand); stroke-width: 3.5; stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke var(--fast) var(--ease);
+}
+.live-code.is-expiring .live-code__ring-progress { stroke: var(--late); }
+.live-code.is-expiring .live-code__value { color: var(--late); }
+
+/* Each new code arrives rather than teleporting, which is the difference
+   between "it changed" and "did I misread that?" */
+@keyframes code-swap {
+    0%   { opacity: 0; transform: translateY(-0.35em); filter: blur(4px); }
+    100% { opacity: 1; transform: none; filter: none; }
+}
+.live-code__value.is-swapping { animation: code-swap 420ms var(--ease) both; }
+
+.live-code.is-closed .live-code__value { color: var(--ink-3); letter-spacing: 0.02em; }
+
+/* ------------------------------------------------------ projector variant --- */
+.live-code--projector { justify-content: center; gap: clamp(28px, 6vw, 90px); }
+.live-code--projector .live-code__main { flex: 0 1 auto; text-align: center; }
+.live-code--projector .live-code__label {
+    justify-content: center; color: rgba(255, 255, 255, 0.66);
+    font-size: clamp(0.75rem, 1.3vw, 1rem); margin-bottom: 1.5vh;
+}
+.live-code--projector .live-code__value {
+    font-size: clamp(3.4rem, 13vw, 12rem); color: #fff; letter-spacing: 0.1em;
+    text-shadow: 0 6px 30px rgba(0, 0, 0, 0.3);
+}
+.live-code--projector .live-code__meta {
+    color: rgba(255, 255, 255, 0.7); font-size: clamp(0.9rem, 1.6vw, 1.2rem); margin-top: 2vh;
+}
+.live-code--projector .live-code__ring { width: clamp(22px, 2.6vw, 40px); height: clamp(22px, 2.6vw, 40px); }
+.live-code--projector .live-code__ring-track { stroke: rgba(255, 255, 255, 0.25); }
+.live-code--projector .live-code__ring-progress { stroke: #fff; }
+.live-code--projector.is-expiring .live-code__ring-progress { stroke: #ffd479; }
+.live-code--projector.is-expiring .live-code__value { color: #ffd479; }
+
+.live-code--projector .live-code__qr {
+    padding: clamp(12px, 1.6vw, 22px); border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+.live-code--projector .live-code__qr .qr svg { max-width: clamp(180px, 26vw, 360px); }
+.live-code--projector .live-code__qr figcaption { color: var(--ink-3); max-width: clamp(180px, 26vw, 360px); }
+
+@media (prefers-reduced-motion: reduce) {
+    .live-code__value.is-swapping { animation: none; }
+    .live-code__ring-progress { transition: none; }
+}
+
+/* =============================================================
+   Check-in confirmation, live tally, empty states
+   ============================================================= */
+
+/* ------------------------------------------------------ confirmation --- */
+.confirm {
+    display: flex; align-items: center; gap: 18px;
+    padding: 20px 24px; border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, #ffffff 0%, var(--ok-bg) 100%);
+    border: 1px solid var(--line); border-left: 3px solid var(--present);
+    box-shadow: var(--shadow-sm);
+    animation: rise-in var(--slow) var(--ease) both;
+}
+.confirm__mark { flex: 0 0 auto; width: 52px; height: 52px; }
+.confirm__mark svg { width: 100%; height: 100%; }
+
+.confirm__ring {
+    fill: none; stroke: var(--present); stroke-width: 2.5; opacity: 0.28;
+    stroke-dasharray: 145; stroke-dashoffset: 145;
+    animation: draw-mark 520ms var(--ease) forwards;
+}
+.confirm__tick {
+    fill: none; stroke: var(--present); stroke-width: 4;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 40; stroke-dashoffset: 40;
+    animation: draw-mark 420ms var(--ease) 300ms forwards;
+}
+@keyframes draw-mark { to { stroke-dashoffset: 0; } }
+
+.confirm__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; }
+.confirm__message { margin: 3px 0 0; color: var(--ink-2); font-size: 0.93rem; }
+
+/* ------------------------------------------------------------- tally --- */
+.tally { margin-top: 18px; }
+.tally__value {
+    margin: 0 0 7px; font-family: var(--font-display); font-weight: 600;
+    font-size: 0.95rem; color: var(--ink-2);
+}
+.tally__of, .tally__word { font-weight: 400; color: var(--ink-3); }
+
+.tally__track {
+    height: 7px; background: var(--canvas); border-radius: 999px; overflow: hidden;
+}
+.tally__fill {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--present), #2a9c7a);
+    transition: width 700ms var(--ease);
+}
+
+/* A brief lift as each arrival lands, which is the point of putting the
+   count on a projector at all. */
+@keyframes tally-bump {
+    0%   { transform: none; }
+    35%  { transform: translateY(-3px) scale(1.14); }
+    100% { transform: none; }
+}
+[data-present] { display: inline-block; }
+[data-present].is-bumped { animation: tally-bump 500ms var(--ease); color: var(--present); }
+
+.live-code--projector .tally { margin-top: 3vh; }
+.live-code--projector .tally__value {
+    font-size: clamp(1rem, 2.2vw, 1.8rem); color: rgba(255, 255, 255, 0.92);
+}
+.live-code--projector .tally__of,
+.live-code--projector .tally__word { color: rgba(255, 255, 255, 0.6); }
+.live-code--projector .tally__track { height: clamp(8px, 1vw, 14px); background: rgba(255, 255, 255, 0.18); }
+.live-code--projector .tally__fill { background: linear-gradient(90deg, #57d0a5, #9ef0cd); }
+.live-code--projector [data-present].is-bumped { color: #9ef0cd; }
+
+/* ------------------------------------------------------- empty states --- */
+.empty-state {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 4px; padding: 34px 24px;
+    background: var(--canvas); border-radius: var(--radius-lg);
+}
+.empty-state__glyph { width: 96px; margin-bottom: 10px; opacity: 0.55; }
+.empty-state__glyph svg { width: 100%; height: auto; display: block; }
+
+.empty-state .es-line {
+    fill: none; stroke: var(--ink-3); stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+.empty-state .es-cell { fill: none; stroke: var(--line-strong); stroke-width: 1.6; }
+
+.empty-state__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+.empty-state__message { margin: 0; color: var(--ink-3); font-size: 0.9rem; max-width: 46ch; }
+.empty-state .btn { margin-top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .confirm__ring, .confirm__tick { animation: none; stroke-dashoffset: 0; }
+    .tally__fill { transition: none; }
+    [data-present].is-bumped { animation: none; }
+}
+
+/* =============================================================
+   Clickable figures, clickable bars, the session grid
+   ============================================================= */
+
+/* A stat tile that goes somewhere reads as a card, not as a link: no
+   underline, but a clear affordance on hover and a real focus ring. */
+.stat--link {
+    display: block; text-decoration: none; color: inherit;
+    position: relative;
+}
+.stat--link:hover { color: inherit; transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--line-strong); }
+.stat--link:focus-visible { outline: 2px solid var(--brand-lift); outline-offset: 2px; }
+
+.stat__go {
+    margin: 6px 0 0; font-family: var(--font-display); font-weight: 600;
+    font-size: 0.74rem; letter-spacing: 0.04em; color: var(--brand);
+    opacity: 0; transform: translateY(-3px);
+    transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+.stat__go::after { content: " \2192"; }
+.stat--link:hover .stat__go,
+.stat--link:focus-visible .stat__go { opacity: 1; transform: none; }
+
+.stat__value.is-up { color: var(--present); }
+.stat__value.is-down { color: var(--absent); }
+
+/* Bars are links now. The hit area is the bar itself, so the cursor and the
+   focus ring have to come from the anchor wrapping it. */
+.chart__bar-link { cursor: pointer; }
+.chart__bar-link:focus-visible { outline: 2px solid var(--brand-lift); outline-offset: 2px; }
+.chart__bar-link:hover .chart__bar { fill: var(--brand-lift); }
+.chart__bar-link:hover .chart__bar.is-low { fill: #cf6350; }
+
+/* Jumping to the trend section leaves it under the sticky masthead without
+   this, and a brief ring makes it obvious which block was jumped to. */
+#trend { scroll-margin-top: 90px; }
+@keyframes target-glow {
+    0%   { box-shadow: 0 0 0 3px rgba(20, 101, 127, 0.35), var(--shadow-sm); }
+    100% { box-shadow: 0 0 0 0 rgba(20, 101, 127, 0), var(--shadow-sm); }
+}
+#trend:target { animation: target-glow 1600ms var(--ease) both; }
+
+/* --------------------------------------------------------- session grid --- */
+/* One tile per enrolled student, grouped by status. At a hundred students the
+   block of colour is the readable thing, not any individual tile. */
+.session-grid {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    margin: 4px 0 16px;
+}
+.session-grid__cell {
+    width: 22px; height: 22px; border-radius: 4px;
+    border: 1.5px solid var(--line-strong); background: transparent;
+    flex: 0 0 auto; text-decoration: none;
+    transition: transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+.session-grid__cell:hover,
+.session-grid__cell:focus-visible {
+    transform: scale(1.22); box-shadow: var(--shadow-md); z-index: 3;
+}
+.session-grid__cell.is-present    { background: var(--present); border-color: var(--present); }
+.session-grid__cell.is-late       { background: var(--late);    border-color: var(--late); }
+.session-grid__cell.is-excused    { background: var(--excused); border-color: var(--excused); }
+.session-grid__cell.is-absent     { background: transparent;    border-color: var(--absent); }
+.session-grid__cell.is-unrecorded {
+    background: repeating-linear-gradient(45deg, var(--canvas), var(--canvas) 3px, transparent 3px, transparent 6px);
+    border-color: var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stat--link:hover { transform: none; }
+    .session-grid__cell:hover, .session-grid__cell:focus-visible { transform: none; }
+    #trend:target { animation: none; }
+    .stat__go { opacity: 1; transform: none; }
+}
+
+/* A form given the full page width still reads better at a comfortable
+   measure. Inputs stretched to 1100px are harder to scan, not easier. */
+.form--wide { max-width: 780px; }
+.form--wide .field-row .field { flex: 1 1 210px; }
+
+/* ------------------------------------------------------- row actions --- */
+/* Buttons rather than links: these are the working controls of the row, and
+   three underlined phrases in a line read as prose rather than as actions. */
+.row-actions {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+}
+
+.open-form { display: flex; align-items: center; gap: 7px; margin: 0; }
+.open-form__label {
+    font-family: var(--font-display); font-weight: 600; font-size: 0.72rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);
+}
+
+/* A number that means something needs its unit attached to it, not hidden in
+   an aria-label where only a screen reader would ever find it. */
+.unit-field { position: relative; display: inline-flex; align-items: center; }
+.unit-field .input { padding-right: 34px; width: 74px; }
+.unit-field__unit {
+    position: absolute; right: 9px; pointer-events: none;
+    font-size: 0.72rem; color: var(--ink-3); font-family: var(--font-data);
+}
+
+/* Firefox keeps the spinner arrows permanently; Chromium shows them on hover.
+   Either way they are the scrollbar-looking thing beside the number. Hiding
+   them until the field is focused keeps the row calm. */
+.unit-field .input::-webkit-outer-spin-button,
+.unit-field .input::-webkit-inner-spin-button { opacity: 0; transition: opacity var(--fast) var(--ease); }
+.unit-field .input:hover::-webkit-outer-spin-button,
+.unit-field .input:hover::-webkit-inner-spin-button,
+.unit-field .input:focus::-webkit-outer-spin-button,
+.unit-field .input:focus::-webkit-inner-spin-button { opacity: 1; }
+
+/* ------------------------------------------------------- bars on hover --- */
+/* Lifting the bar makes the whole column feel like the target, which is what
+   it is — the anchor wraps the rect, so the bar is the hit area. */
+.chart__bar {
+    transition: fill var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+.chart__bar-link:hover .chart__bar,
+.chart__bar-link:focus-visible .chart__bar {
+    transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chart__bar-link:hover .chart__bar,
+    .chart__bar-link:focus-visible .chart__bar { transform: none; }
+}
+
+/* ---------------------------------------------------- destructive action --- */
+/* Quiet until reached for. A red button sitting in every row of a table reads
+   as an alarm; the row is not dangerous, the action is. */
+.btn--danger-ghost {
+    background: var(--surface); color: var(--ink-3);
+    border-color: var(--line-strong); box-shadow: none;
+}
+.btn--danger-ghost:hover {
+    background: var(--error-bg); color: var(--absent);
+    border-color: var(--absent); filter: none;
+}
+
+/* Pushed to the far end of the row, away from the controls used routinely. */
+.row-actions { width: 100%; }
+.row-actions__end { margin-left: auto; }
+
+.confirm-dialog .help-dialog__body { border-image: linear-gradient(135deg, #c14e37, #8f331f) 1; }
+.confirm-dialog__warning {
+    margin: 0 0 4px; padding: 9px 12px; border-radius: var(--radius);
+    background: var(--warn-bg); color: var(--ink-2); font-size: 0.9rem;
+}
+.confirm-dialog .eyebrow { color: var(--absent); }
+
+@media (max-width: 900px) {
+    .row-actions__end { margin-left: 0; }
+}

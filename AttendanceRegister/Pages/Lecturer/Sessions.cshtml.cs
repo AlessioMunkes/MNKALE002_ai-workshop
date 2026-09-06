@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using AttendanceRegister.Data;
+using AttendanceRegister.Infrastructure;
 using AttendanceRegister.Services.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +13,21 @@ public class SessionsModel : PageModel
 {
     private readonly IAttendanceService _attendance;
     private readonly AttendanceDbContext _db;
+    private readonly IQrCodeService _qr;
+    private readonly ICheckInCodeService _codes;
+    private readonly ISessionAdminService _sessions;
+    private readonly CheckInOptions _checkIn;
 
-    public SessionsModel(IAttendanceService attendance, AttendanceDbContext db)
+    public SessionsModel(IAttendanceService attendance, AttendanceDbContext db,
+        IQrCodeService qr, ICheckInCodeService codes, ISessionAdminService sessions,
+        IOptions<CheckInOptions> checkIn)
     {
         _attendance = attendance;
         _db = db;
+        _qr = qr;
+        _codes = codes;
+        _sessions = sessions;
+        _checkIn = checkIn.Value;
     }
 
     [BindProperty]
@@ -25,6 +37,27 @@ public class SessionsModel : PageModel
     public AttendanceRegister.Models.Entities.Lecture? OpenSession { get; private set; }
     public int Enrolled { get; private set; }
     public string OpenCloseTime { get; private set; } = string.Empty;
+
+    /// <summary>Same shape the projector uses, so both screens show one truth.</summary>
+    public AttendanceRegister.Models.ViewModels.CheckInDisplay Display { get; private set; } = new();
+
+    public string CheckInDisplayUrl { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// True when the QR would send a phone to its own loopback address. That is
+    /// the default when the app runs locally, and the single most likely reason
+    /// a scan appears to do nothing at all.
+    /// </summary>
+    public bool QrPointsAtLocalhost { get; private set; }
+
+    /// <summary>
+    /// Keeps the Add a session disclosure open when a submission comes back
+    /// with errors. Collapsing it would hide the fields the message refers to.
+    /// </summary>
+    public bool ShowAddForm { get; private set; }
+
+    /// <summary>Prefilled into the "open for N minutes" box, from configuration.</summary>
+    public int DefaultWindowMinutes => Math.Clamp(_checkIn.DefaultWindowMinutes, 1, 240);
 
     private Dictionary<int, int> _recorded = new();
 
@@ -61,6 +94,7 @@ public class SessionsModel : PageModel
         if (!ModelState.IsValid)
         {
             await LoadAsync();
+            ShowAddForm = true;
             return Page();
         }
 
@@ -68,6 +102,7 @@ public class SessionsModel : PageModel
         {
             ModelState.AddModelError("NewSession.EndTime", "The end time must be after the start time.");
             await LoadAsync();
+            ShowAddForm = true;
             return Page();
         }
 
@@ -84,6 +119,7 @@ public class SessionsModel : PageModel
         {
             ModelState.AddModelError("NewSession.SessionDate", ex.Message);
             await LoadAsync();
+            ShowAddForm = true;
             return Page();
         }
     }
@@ -101,6 +137,16 @@ public class SessionsModel : PageModel
             TempData["Flash"] = ex.Message;
             TempData["FlashKind"] = "error";
         }
+
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(int lectureId)
+    {
+        var outcome = await _sessions.DeleteAsync(lectureId, HttpContext.RequestAborted);
+
+        TempData["Flash"] = outcome.Message;
+        TempData["FlashKind"] = outcome.Success ? "success" : "error";
 
         return RedirectToPage();
     }
@@ -125,6 +171,33 @@ public class SessionsModel : PageModel
         if (OpenSession?.CheckInClosesAtUtc is not null)
         {
             OpenCloseTime = OpenSession.CheckInClosesAtUtc.Value.ToLocalTime().ToString("HH:mm");
+        }
+
+        var currentCode = OpenSession is null ? null : _codes.CurrentCode(OpenSession);
+        if (OpenSession is not null && currentCode is not null)
+        {
+            var target = CheckInUrl.For(Url, Request, _checkIn.PublicBaseUrl, currentCode);
+            CheckInDisplayUrl = CheckInUrl.WithoutScheme(target);
+
+            var progress = await _attendance.GetCheckInProgressAsync(OpenSession.Id, cancellationToken);
+
+            Display = new AttendanceRegister.Models.ViewModels.CheckInDisplay
+            {
+                IsOpen = true,
+                PresentCount = progress.Present,
+                Enrolled = progress.Enrolled,
+                Code = currentCode,
+                QrSvg = _qr.ToSvg(target, pixelsPerModule: 4),
+                SecondsRemaining = _codes.SecondsRemaining(),
+                StepSeconds = _codes.StepSeconds,
+                PulseUrl = Url.Page("/Lecturer/Display", "Pulse", new { lectureId = OpenSession.Id }) ?? string.Empty,
+                DisplayUrl = CheckInDisplayUrl,
+                ClosesAt = OpenCloseTime,
+                Variant = "card"
+            };
+
+            QrPointsAtLocalhost = CheckInDisplayUrl.StartsWith("localhost", StringComparison.OrdinalIgnoreCase)
+                                  || CheckInDisplayUrl.StartsWith("127.0.0.1", StringComparison.Ordinal);
         }
 
         Enrolled = await _db.Students.CountAsync(cancellationToken);

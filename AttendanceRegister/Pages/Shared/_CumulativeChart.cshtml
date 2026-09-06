@@ -1,0 +1,93 @@
+@using AttendanceRegister.Infrastructure.Charts
+@model CumulativeChart
+@{
+    var plot = new PlotArea(width: 900, height: 260, left: 44, top: 18, right: 16, bottom: 46);
+    var points = Model.Points;
+
+    // Line and the area beneath it, built in one pass so they cannot diverge.
+    var line = new System.Text.StringBuilder();
+    var area = new System.Text.StringBuilder();
+
+    for (var i = 0; i < points.Count; i++)
+    {
+        var x = PlotArea.N(plot.BandCentre(i, points.Count));
+        var y = PlotArea.N(plot.YForPercent(points[i].CumulativePercent));
+        var baseline = PlotArea.N(plot.Bottom);
+
+        line.Append(i == 0 ? "M" : "L").Append(x).Append(' ').Append(y).Append(' ');
+
+        if (i == 0)
+        {
+            area.Append('M').Append(x).Append(' ').Append(baseline).Append(' ');
+        }
+
+        area.Append('L').Append(x).Append(' ').Append(y).Append(' ');
+
+        if (i == points.Count - 1)
+        {
+            area.Append('L').Append(x).Append(' ').Append(baseline).Append(" Z");
+        }
+    }
+
+    var thresholdY = plot.YForPercent(Model.MinimumPercent);
+    var labelEvery = (int)Math.Ceiling(points.Count / 12.0);
+}
+
+<div class="chart">
+    <svg viewBox="0 0 @PlotArea.N(plot.Width) @PlotArea.N(plot.Height)" role="img"
+         aria-label="Cumulative attendance across the term, against the @Model.MinimumPercent percent requirement"
+         preserveAspectRatio="xMidYMid meet">
+        <defs>
+            <linearGradient id="cumulative-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--brand-lift)" stop-opacity="0.28" />
+                <stop offset="100%" stop-color="var(--brand-lift)" stop-opacity="0.02" />
+            </linearGradient>
+        </defs>
+
+        <g class="chart__grid-group">
+            @for (var percent = 0; percent <= 100; percent += 25)
+            {
+                var y = plot.YForPercent(percent);
+                <g>
+                    <line class="chart__grid" x1="@PlotArea.N(plot.Left)" x2="@PlotArea.N(plot.Right)"
+                          y1="@PlotArea.N(y)" y2="@PlotArea.N(y)"></line>
+                    <text class="chart__axis" x="@PlotArea.N(plot.Left - 8)" y="@PlotArea.N(y + 4)"
+                          text-anchor="end">@percent&#37;</text>
+                </g>
+            }
+        </g>
+
+        <path class="chart__area" d="@area.ToString()" fill="url(#cumulative-fill)"></path>
+
+        <line class="chart__threshold" x1="@PlotArea.N(plot.Left)" x2="@PlotArea.N(plot.Right)"
+              y1="@PlotArea.N(thresholdY)" y2="@PlotArea.N(thresholdY)"></line>
+
+        <path class="chart__line @(Model.EndsBelowThreshold ? "is-low" : "")" d="@line.ToString().Trim()"></path>
+
+        <g class="chart__dots">
+            @for (var i = 0; i < points.Count; i++)
+            {
+                var point = points[i];
+                var cx = plot.BandCentre(i, points.Count);
+                var cy = plot.YForPercent(point.CumulativePercent);
+                var tip = $"{point.SessionDate:d MMM yyyy}: running {point.CumulativePercent:0.#}% " +
+                          $"({point.AttendedToDate} of {point.PossibleToDate}), this session {point.SessionPercent:0.#}%";
+                <circle class="chart__dot" cx="@PlotArea.N(cx)" cy="@PlotArea.N(cy)" r="3.4">
+                    <title>@tip</title>
+                </circle>
+            }
+        </g>
+
+        <g class="chart__ticks">
+            @for (var i = 0; i < points.Count; i++)
+            {
+                if (i % labelEvery != 0) { continue; }
+                var tx = plot.BandCentre(i, points.Count);
+                <g>
+                    <text class="chart__axis" x="@PlotArea.N(tx)" y="@PlotArea.N(plot.Bottom + 22)"
+                          text-anchor="middle">@points[i].SessionDate.ToString("d MMM")</text>
+                </g>
+            }
+        </g>
+    </svg>
+</div>

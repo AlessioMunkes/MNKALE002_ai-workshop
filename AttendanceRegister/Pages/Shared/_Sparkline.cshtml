@@ -1,0 +1,21 @@
+@using AttendanceRegister.Infrastructure.Charts
+@model IReadOnlyList<SessionCell>
+@{
+    const double width = 74;
+    const double height = 20;
+    var path = Sparkline.Path(Model, width, height);
+    var finalText = Sparkline.FinalRate(Model).ToString("0.#");
+}
+@if (string.IsNullOrEmpty(path))
+{
+    <span class="muted">&mdash;</span>
+}
+else
+{
+    <svg class="sparkline" viewBox="0 0 @PlotArea.N(width) @PlotArea.N(height)"
+         preserveAspectRatio="none" role="img"
+         aria-label="Running attendance rate, ending at @finalText percent">
+        <path class="sparkline__line" d="@path"></path>
+        <title>Running rate over the term, ending at @finalText&#37;</title>
+    </svg>
+}

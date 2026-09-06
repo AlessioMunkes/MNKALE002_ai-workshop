@@ -1,0 +1,39 @@
+@page "{lectureId:int}"
+@model AttendanceRegister.Pages.Lecturer.DisplayModel
+@{
+    ViewData["Title"] = "Check-in code";
+    Layout = null; // Full bleed: this goes on a projector, not in the app chrome.
+}
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.CourseCode check-in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@600;700&display=swap" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="projector">
+<main class="projector__inner">
+    @if (!Model.Display.IsOpen)
+    {
+        <p class="projector__eyebrow">@Model.CourseCode</p>
+        <h1 class="projector__closed">Check-in is closed</h1>
+        <p class="projector__hint">Open it again from the Sessions screen.</p>
+    }
+    else
+    {
+        <p class="projector__eyebrow">@Model.CourseCode &middot; @Model.SessionDate</p>
+
+        <partial name="_CheckInCode" model="Model.Display" />
+
+        <p class="projector__footer">Window closes at @Model.Display.ClosesAt</p>
+    }
+</main>
+
+<script src="~/js/checkin-pulse.js" asp-append-version="true" defer></script>
+</body>
+</html>

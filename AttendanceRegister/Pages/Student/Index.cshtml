@@ -3,6 +3,24 @@
 @{
     ViewData["Title"] = "My dashboard";
     var summary = Model.Summary;
+    var culture = System.Globalization.CultureInfo.InvariantCulture;
+    var justCheckedIn = !string.IsNullOrWhiteSpace(Model.JustCheckedIn);
+}
+
+@if (justCheckedIn)
+{
+    <section class="confirm" role="status">
+        <span class="confirm__mark" aria-hidden="true">
+            <svg viewBox="0 0 52 52">
+                <circle class="confirm__ring" cx="26" cy="26" r="23"></circle>
+                <path class="confirm__tick" d="M15 27.5 L22.5 35 L38 19"></path>
+            </svg>
+        </span>
+        <div>
+            <p class="confirm__title">You are marked present</p>
+            <p class="confirm__message">@Model.JustCheckedIn</p>
+        </div>
+    </section>
 }
 
 <header class="page-head">
@@ -16,7 +34,24 @@
             Attendance
             <span class="hint" tabindex="0" data-tip="Counted over the @summary.SessionsHeld sessions that have been captured. Sessions nobody has captured yet are ignored.">?</span>
         </p>
-        <p class="figure__value">@(summary.Percentage.ToString("0.#"))<span class="figure__unit">&percnt;</span></p>
+
+        @* After a check-in the figure climbs from where it was, so the change
+           is the thing you see rather than the number. *@
+        <p class="figure__value">
+            @if (justCheckedIn)
+            {
+                <span data-countup
+                      data-countup-from="@Model.PreviousPercent.ToString("0.#", culture)"
+                      data-countup-to="@summary.Percentage.ToString("0.#", culture)"
+                      data-countup-decimals="1">@(summary.Percentage.ToString("0.#"))</span>
+            }
+            else
+            {
+                @(summary.Percentage.ToString("0.#"))
+            }
+            <span class="figure__unit">&percnt;</span>
+        </p>
+
         <p class="figure__caption">@summary.SessionsAttended of @summary.SessionsHeld sessions</p>
 
         <div class="meter" role="img" aria-label="@(summary.Percentage.ToString("0.#")) percent attendance against a @(summary.MinimumPercent) percent requirement">
@@ -54,7 +89,7 @@
                 <div class="field">
                     <label class="label" asp-for="Code">
                         Session code
-                        <span class="hint" tabindex="0" data-tip="Six characters from the screen. Case does not matter, and the code never contains O, I, L, 0 or 1.">?</span>
+                        <span class="hint" tabindex="0" data-tip="Six characters from the screen. It changes every 30 seconds, so read the one showing now. Case does not matter, and it never contains O, I, L, 0 or 1.">?</span>
                     </label>
                     <input class="input input--code" asp-for="Code" maxlength="8" autocomplete="off"
                            spellcheck="false" placeholder="ABC234" />
@@ -62,6 +97,9 @@
                 </div>
                 <button type="submit" class="btn">Check in</button>
             </form>
+
+            <p class="muted">Or point your phone camera at the QR code on the lecture screen &mdash; it opens this
+                same check-in with the code already filled in.</p>
         }
     </section>
 </div>
@@ -74,7 +112,7 @@
 
     @if (summary.Cells.Count == 0)
     {
-        <p class="empty">Nothing has been captured yet. Your first session will show up here.</p>
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "register", Title = "No sessions yet", Message = "Once a session is captured you will see a square here for each one, filled in when you were counted." })" />
     }
     else
     {

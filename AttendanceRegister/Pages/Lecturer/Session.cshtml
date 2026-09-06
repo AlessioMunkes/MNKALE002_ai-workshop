@@ -1,0 +1,255 @@
+@page "{lectureId:int}"
+@model AttendanceRegister.Pages.Lecturer.SessionModel
+@{
+    var session = Model.Overview;
+    ViewData["Title"] = session.SessionDate.ToString("d MMM yyyy") + " session";
+    var culture = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<header class="page-head page-head--row">
+    <div>
+        <p class="eyebrow">@Model.CourseCode &middot; @session.TimeRange@(string.IsNullOrWhiteSpace(session.Venue) ? "" : " · " + session.Venue)</p>
+        <h1 class="page-head__title">
+            @session.SessionDate.ToString("dddd d MMMM yyyy")
+            @if (session.IsCheckInOpen)
+            {
+                <span class="pill pill--present">Check-in open</span>
+            }
+        </h1>
+        <p class="page-head__lede">@(string.IsNullOrWhiteSpace(session.Topic) ? "No topic recorded for this session." : session.Topic)</p>
+    </div>
+    <div class="page-head__actions">
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Sessions">All sessions</a>
+        <a class="btn btn--sm" asp-page="/Lecturer/Register" asp-route-lectureId="@session.LectureId">Mark register</a>
+    </div>
+</header>
+
+<div class="grid grid--4">
+    <div class="stat">
+        <p class="stat__label">
+            Counted present
+            <span class="hint" tabindex="0" data-tip="Present, late and excused all count towards attendance.">?</span>
+        </p>
+        <p class="stat__value">@session.CountedCount<span class="stat__unit">/@session.Enrolled</span></p>
+    </div>
+    <div class="stat @(session.BelowThreshold ? "is-attention" : "")">
+        <p class="stat__label">Session rate</p>
+        <p class="stat__value">@(session.Percentage.ToString("0.#", culture))<span class="stat__unit">&percnt;</span></p>
+    </div>
+    <div class="stat">
+        <p class="stat__label">Against the average</p>
+        <p class="stat__value @(session.AgainstAverage < 0 ? "is-down" : "is-up")">
+            @(session.AgainstAverage >= 0 ? "+" : "")@(session.AgainstAverage.ToString("0.#", culture))
+        </p>
+        <p class="muted">term mean @(session.CourseAverage.ToString("0.#", culture))&percnt;</p>
+    </div>
+    <div class="stat">
+        <p class="stat__label">Ranked</p>
+        <p class="stat__value">@session.Rank<span class="stat__unit">/@session.SessionsCaptured</span></p>
+        <p class="muted">best session first</p>
+    </div>
+</div>
+
+<section class="card">
+    <div class="card__head">
+        <div>
+            <h2 class="card__title">Who was here</h2>
+            <p class="muted">Every enrolled student, coloured by status.</p>
+        </div>
+        <ul class="legend">
+            <li><span class="strip__cell is-present"></span> Present @session.PresentCount</li>
+            <li><span class="strip__cell is-late"></span> Late @session.LateCount</li>
+            <li><span class="strip__cell is-excused"></span> Excused @session.ExcusedCount</li>
+            <li><span class="strip__cell is-absent"></span> Absent @session.AbsentCount</li>
+            <li><span class="strip__cell is-unrecorded"></span> Not captured @session.NotCapturedCount</li>
+        </ul>
+    </div>
+
+    @if (!session.HasRecords)
+    {
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "register", Title = "Nothing captured for this session", Message = "Open check-in for it, mark the register by hand, or upload a spreadsheet that has this date as a column.", ActionText = "Mark register", ActionPage = "/Lecturer/Register" })" />
+    }
+    else
+    {
+        @* One tile per student rather than a strip: at 104 students the grid
+           reads as a shape, and a pale block of tiles is the thing worth
+           seeing. *@
+        <div class="session-grid">
+            @foreach (var attendee in Model.GridOrder)
+            {
+                var url = Url.Page("/Lecturer/StudentDetail", new { studentId = attendee.StudentId });
+                var tip = $"{attendee.DisplayName} ({attendee.StudentNumber}) — {attendee.StatusLabel}";
+                <a class="session-grid__cell is-@attendee.StatusModifier" href="@url" title="@tip">
+                    <span class="sr-only">@tip</span>
+                </a>
+            }
+        </div>
+
+        @if (session.Captured.Count > 0)
+        {
+            <p class="muted">
+                Captured by:
+                @for (var i = 0; i < session.Captured.Count; i++)
+                {
+                    <text>@session.Captured[i].Label @session.Captured[i].Count</text>
+                    if (i < session.Captured.Count - 1)
+                    {
+                        <text> &middot; </text>
+                    }
+                }
+            </p>
+        }
+    }
+</section>
+
+<div class="grid grid--split">
+    <section class="card">
+        <div class="card__head">
+            <h2 class="card__title">Not counted present</h2>
+            @if (Model.MissedCount > 0)
+            {
+                <a class="btn btn--ghost btn--sm" href="@Model.MissedEmailHref">Email all @Model.MissedCount</a>
+            }
+        </div>
+
+        @if (Model.MissedCount == 0)
+        {
+            <partial name="_EmptyState" model="@(new EmptyState { Glyph = "students", Title = "Everyone was counted", Message = "Every enrolled student was present, late or excused at this session." })" />
+        }
+        else
+        {
+            <div class="table-wrap table-wrap--tall">
+                <table class="table" data-table-tools data-table-id="session-missed">
+                    <thead>
+                    <tr>
+                        <th scope="col" data-lock>Student</th>
+                        <th scope="col">Number</th>
+                        <th scope="col" data-filter data-label="Status">Status</th>
+                        <th scope="col" data-label="Overall rate">Overall</th>
+                        <th scope="col" data-nosort><span class="sr-only">Contact</span></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var attendee in Model.Missed)
+                    {
+                        <tr>
+                            <th scope="row">
+                                <a asp-page="/Lecturer/StudentDetail" asp-route-studentId="@attendee.StudentId">@attendee.DisplayName</a>
+                            </th>
+                            <td class="num">@attendee.StudentNumber</td>
+                            <td data-value="@attendee.StatusLabel">
+                                <span class="pill pill--@(attendee.StatusModifier)">@attendee.StatusLabel</span>
+                            </td>
+                            <td class="num" data-sort="@attendee.OverallPercent.ToString("0.#", culture)">@(attendee.OverallPercent.ToString("0.#", culture))&percnt;</td>
+                            <td class="cell--action" data-value="">
+                                <a class="link" href="@Model.EmailHref(attendee)">Email</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="card__head">
+            <h2 class="card__title">Counted present</h2>
+            <p class="muted">@session.CountedCount of @session.Enrolled</p>
+        </div>
+
+        @if (session.CountedCount == 0)
+        {
+            <partial name="_EmptyState" model="@(new EmptyState { Glyph = "students", Title = "Nobody counted yet", Message = "Students appear here as they check in, or once a register is uploaded for this date." })" />
+        }
+        else
+        {
+            <div class="table-wrap table-wrap--tall">
+                <table class="table" data-table-tools data-table-id="session-present">
+                    <thead>
+                    <tr>
+                        <th scope="col" data-lock>Student</th>
+                        <th scope="col">Number</th>
+                        <th scope="col" data-filter data-label="Status">Status</th>
+                        <th scope="col" data-filter data-label="Captured by">Captured by</th>
+                        <th scope="col" data-label="Recorded at">Recorded</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var attendee in Model.Present)
+                    {
+                        <tr>
+                            <th scope="row">
+                                <a asp-page="/Lecturer/StudentDetail" asp-route-studentId="@attendee.StudentId">@attendee.DisplayName</a>
+                            </th>
+                            <td class="num">@attendee.StudentNumber</td>
+                            <td data-value="@attendee.StatusLabel">
+                                <span class="pill pill--@(attendee.StatusModifier)">@attendee.StatusLabel</span>
+                            </td>
+                            <td class="muted">@attendee.SourceLabel</td>
+                            <td class="muted num" data-sort="@attendee.RecordedSortKey">@(attendee.RecordedLocal?.ToString("HH:mm") ?? "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+<section class="card" id="delete">
+    <details class="danger" open="@(Model.FocusDelete ? "open" : null)">
+        <summary>Delete this session</summary>
+        <p class="muted">
+            @Model.DeletionSummary
+            The session disappears from every register, chart and export. There is no undo.
+        </p>
+        <form method="post" asp-page-handler="Delete">
+            <button type="submit" class="btn btn--danger btn--sm">Yes, delete this session</button>
+        </form>
+    </details>
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <h2 class="card__title">Queries about this session</h2>
+        <a class="link" asp-page="/Lecturer/Queries">All queries</a>
+    </div>
+
+    @if (session.Queries.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "queries", Title = "No queries", Message = "Nobody has disputed how this session was recorded." })" />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table" data-table-tools data-table-id="session-queries">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Student</th>
+                    <th scope="col" data-filter data-label="Outcome">Outcome</th>
+                    <th scope="col" data-label="Asked for">Asked for</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col" data-nosort><span class="sr-only">Action</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var query in session.Queries)
+                {
+                    <tr>
+                        <th scope="row">@(query.Student?.DisplayName ?? "Unknown student")</th>
+                        <td data-value="@query.Status">
+                            <span class="pill pill--@(query.Status.ToString().ToLowerInvariant())">@query.Status</span>
+                        </td>
+                        <td>@query.RequestedStatus</td>
+                        <td>@query.Reason</td>
+                        <td class="cell--action">
+                            <a class="link" asp-page="/Lecturer/QueryEdit" asp-route-queryId="@query.Id">Open</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

@@ -15,24 +15,42 @@
 {
     <section class="card card--live">
         <p class="eyebrow">Check-in is open</p>
-        <div class="live">
-            <div>
-                <p class="live__date">@Model.OpenSession.SessionDate.ToString("dddd d MMMM yyyy")</p>
-                <p class="muted">Closes at @Model.OpenCloseTime &middot; students type this code on their dashboard</p>
-            </div>
-            <p class="live__code">@Model.OpenSession.CheckInCode</p>
+        <p class="live__date">@Model.OpenSession.SessionDate.ToString("dddd d MMMM yyyy") &middot; closes at @Model.OpenCloseTime</p>
+
+        <partial name="_CheckInCode" model="Model.Display" />
+
+        <p class="muted">Students type the code on their dashboard, or scan the QR with their phone camera.</p>
+
+        <div class="form__actions">
+            <a class="btn btn--sm" asp-page="/Lecturer/Display" asp-route-lectureId="@Model.OpenSession.Id"
+               target="_blank" rel="noopener">Open the projector view</a>
             <form method="post" asp-page-handler="Close">
                 <input type="hidden" name="lectureId" value="@Model.OpenSession.Id" />
-                <button type="submit" class="btn btn--ghost">Close check-in</button>
+                <button type="submit" class="btn btn--ghost btn--sm">Close check-in</button>
             </form>
         </div>
+
+        @if (Model.QrPointsAtLocalhost)
+        {
+            <p class="alert alert--info">
+                This QR points at <code>@Model.CheckInDisplayUrl</code>. A phone reading that will look for the site
+                on itself and find nothing. For a live demonstration, start the app with
+                <code>dotnet run --urls http://0.0.0.0:5000</code> and set <code>CheckIn:PublicBaseUrl</code>
+                in appsettings.json to this machine's address on the venue network.
+            </p>
+        }
     </section>
 }
 
-<div class="grid grid--split">
-    <section class="card">
-        <h2 class="card__title">Add a session</h2>
-        <form method="post" asp-page-handler="Create" class="form">
+@* Stacked rather than side by side: the list is the working surface here, and
+   at half width its toolbar and columns were cut off. The form is the
+   occasional task, so it collapses out of the way above it. It opens by itself
+   when a submission comes back with errors. *@
+<section class="card">
+    <details class="disclosure" open="@(Model.ShowAddForm ? "open" : null)">
+        <summary class="disclosure__summary">Add a session</summary>
+
+        <form method="post" asp-page-handler="Create" class="form form--wide">
             <div class="field-row">
                 <div class="field">
                     <label class="label" asp-for="NewSession.SessionDate">Date</label>
@@ -48,76 +66,122 @@
                     <input class="input" asp-for="NewSession.EndTime" type="time" asp-format="{0:HH:mm}" />
                 </div>
             </div>
-            <div class="field">
-                <label class="label" asp-for="NewSession.Topic">Topic</label>
-                <input class="input" asp-for="NewSession.Topic" placeholder="Normalisation workshop" />
-            </div>
-            <div class="field">
-                <label class="label" asp-for="NewSession.Venue">Venue</label>
-                <input class="input" asp-for="NewSession.Venue" placeholder="Leslie Social 2A" />
+            <div class="field-row">
+                <div class="field">
+                    <label class="label" asp-for="NewSession.Topic">Topic</label>
+                    <input class="input" asp-for="NewSession.Topic" placeholder="Normalisation workshop" />
+                </div>
+                <div class="field">
+                    <label class="label" asp-for="NewSession.Venue">Venue</label>
+                    <input class="input" asp-for="NewSession.Venue" placeholder="Leslie Social 2A" />
+                </div>
             </div>
             <button type="submit" class="btn">Add session</button>
         </form>
-    </section>
+    </details>
+</section>
 
-    <section class="card">
-        <h2 class="card__title">
-            All sessions
-            <span class="hint" tabindex="0" data-tip="Only one session can accept check-ins at a time. Opening a second one closes the first.">?</span>
-        </h2>
+<section class="card">
+    <h2 class="card__title">
+        All sessions
+        <span class="hint" tabindex="0" data-tip="Only one session can accept check-ins at a time. Opening a second one closes the first.">?</span>
+    </h2>
 
-        @if (Model.Sessions.Count == 0)
-        {
-            <p class="empty">No sessions yet. Add one on the left, or upload a past register.</p>
-        }
-        else
-        {
-            <div class="table-wrap table-wrap--tall">
-                <table class="table" data-table-tools data-table-id="sessions">
-                    <thead>
-                    <tr>
-                        <th scope="col" data-lock>Date</th>
-                        <th scope="col">Topic</th>
-                        <th scope="col" data-label="Captured">Captured</th>
-                        <th scope="col" data-filter data-label="Check-in">Check-in</th>
-                        <th scope="col" data-nosort><span class="sr-only">Actions</span></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var session in Model.Sessions)
-                    {
-                        var sessionKey = session.SessionDate.ToString("yyyy-MM-dd");
-                        <tr>
-                            <th scope="row" class="num" data-sort="@sessionKey">@session.SessionDate.ToString("ddd d MMM yyyy")</th>
-                            <td>@(string.IsNullOrWhiteSpace(session.Topic) ? "—" : session.Topic)</td>
-                            <td class="num" data-sort="@Model.RecordedCount(session.Id)">@Model.RecordedCount(session.Id) / @Model.Enrolled</td>
-                            <td data-value="@(session.IsCheckInOpen ? "Open" : "Closed")">
-                                @if (session.IsCheckInOpen)
-                                {
-                                    <span class="pill pill--present">Open &middot; @session.CheckInCode</span>
-                                }
-                                else
-                                {
-                                    <span class="muted">Closed</span>
-                                }
-                            </td>
-                            <td class="cell--action">
-                                <a class="link" asp-page="/Lecturer/Register" asp-route-lectureId="@session.Id">Mark register</a>
+    @if (Model.Sessions.Count == 0)
+    {
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "sessions", Title = "No sessions yet", Message = "Use Add a session above for an upcoming lecture, or upload a past register to create them from its date columns." })" />
+    }
+    else
+    {
+        <div class="table-wrap table-wrap--tall">
+            <table class="table" data-table-tools data-table-id="sessions">
+                <thead>
+                <tr>
+                    <th scope="col" data-lock>Date</th>
+                    <th scope="col">Topic</th>
+                    <th scope="col" data-label="Captured">Captured</th>
+                    <th scope="col" data-filter data-label="Check-in">Check-in</th>
+                    <th scope="col" data-nosort><span class="sr-only">Actions</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var session in Model.Sessions)
+                {
+                    var sessionKey = session.SessionDate.ToString("yyyy-MM-dd");
+                    var overviewUrl = Url.Page("/Lecturer/Session", new { lectureId = session.Id });
+                    <tr data-href="@overviewUrl">
+                        <th scope="row" class="num" data-sort="@sessionKey">
+                            <a asp-page="/Lecturer/Session" asp-route-lectureId="@session.Id">@session.SessionDate.ToString("ddd d MMM yyyy")</a>
+                        </th>
+                        <td>@(string.IsNullOrWhiteSpace(session.Topic) ? "—" : session.Topic)</td>
+                        <td class="num" data-sort="@Model.RecordedCount(session.Id)">@Model.RecordedCount(session.Id) / @Model.Enrolled</td>
+                        <td data-value="@(session.IsCheckInOpen ? "Open" : "Closed")">
+                            @if (session.IsCheckInOpen)
+                            {
+                                <span class="pill pill--present">Check-in open</span>
+                                <a class="link" asp-page="/Lecturer/Display" asp-route-lectureId="@session.Id"
+                                   target="_blank" rel="noopener">Display</a>
+                            }
+                            else
+                            {
+                                <span class="muted">Closed</span>
+                            }
+                        </td>
+                        <td class="cell--action">
+                            <div class="row-actions">
+                                <a class="btn btn--sm btn--ghost" asp-page="/Lecturer/Session" asp-route-lectureId="@session.Id">Overview</a>
+                                <a class="btn btn--sm btn--ghost" asp-page="/Lecturer/Register" asp-route-lectureId="@session.Id">Mark register</a>
+
                                 @if (!session.IsCheckInOpen)
                                 {
-                                    <form method="post" asp-page-handler="Open" class="inline-form">
+                                    @* Button first, then the duration, so the control reads as
+                                       one sentence: Open check-in for 15 min. The number had
+                                       only an aria-label before, which meant a screen reader
+                                       knew what it was and nobody using a mouse did. *@
+                                    <form method="post" asp-page-handler="Open" class="open-form">
                                         <input type="hidden" name="lectureId" value="@session.Id" />
-                                        <input type="number" name="minutes" value="15" min="1" max="240"
-                                               class="input input--tiny" aria-label="Minutes to keep check-in open" />
-                                        <button type="submit" class="btn btn--sm btn--ghost">Open check-in</button>
+
+                                        <button type="submit" class="btn btn--sm">Open check-in</button>
+
+                                        <label class="open-form__label" for="minutes-@session.Id">for</label>
+                                        <span class="unit-field">
+                                            <input class="input input--tiny" type="number"
+                                                   id="minutes-@session.Id" name="minutes"
+                                                   value="@Model.DefaultWindowMinutes" min="1" max="240"
+                                                   aria-describedby="minutes-unit-@session.Id" />
+                                            <span class="unit-field__unit" id="minutes-unit-@session.Id">min</span>
+                                        </span>
                                     </form>
                                 }
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </section>
-</div>
+
+                                @{
+                                    var captured = Model.RecordedCount(session.Id);
+                                    var detail = captured == 0
+                                        ? "Nothing has been captured against this session."
+                                        : $"{captured} attendance {(captured == 1 ? "record goes" : "records go")} with it.";
+                                    var warning = session.IsCheckInOpen
+                                        ? "Check-in is open for this session right now."
+                                        : null;
+                                }
+
+                                @* An anchor, not a button: without scripting it goes to the
+                                   session overview, which can confirm the same deletion on its
+                                   own. Nothing destructive is ever one click away. *@
+                                <a class="btn btn--sm btn--danger-ghost row-actions__end"
+                                   asp-page="/Lecturer/Session" asp-route-lectureId="@session.Id"
+                                   data-confirm-delete
+                                   data-confirm-id="@session.Id"
+                                   data-confirm-title="Delete @session.SessionDate.ToString("d MMMM yyyy")?"
+                                   data-confirm-detail="@detail"
+                                   data-confirm-warning="@warning">Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<partial name="_ConfirmDelete" />

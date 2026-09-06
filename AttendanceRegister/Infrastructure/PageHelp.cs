@@ -35,8 +35,14 @@ public static class PageHelpCatalogue
         ["/Student/Index"] = new("Your dashboard", new[]
         {
             "Your attendance percentage, measured only against sessions that have actually been captured, so a session nobody recorded cannot count against you.",
-            "When your lecturer opens check-in, a box appears here. Type the six-character code from the screen before the window closes.",
+            "When your lecturer opens check-in, a box appears here. Type the six-character code from the screen \u2014 it changes every 30 seconds, so read the one showing now.",
             "The strip is one square per session: filled means you were counted, hollow means you were not, hatched means nobody captured it yet."
+        }),
+
+        ["/Student/CheckIn"] = new("Check in", new[]
+        {
+            "You reached this by scanning the code on the lecture screen. The session and the code are filled in already \u2014 confirm and you are marked present.",
+            "Nothing is recorded until you press the button. Scanning on its own, or a link preview opening the page, cannot mark you present."
         }),
 
         ["/Student/History"] = new("Your attendance", new[]
@@ -64,6 +70,20 @@ public static class PageHelpCatalogue
             "Filter Standing to see only the students below the requirement."
         }),
 
+        ["/Lecturer/Session"] = new("Session overview", new[]
+        {
+            "What happened at one lecture: how many were counted, how each record was captured, and how the session compares with the rest of the term.",
+            "The register screen is for changing attendance. This one is for reading it \u2014 use Mark register when something needs correcting.",
+            "Everyone not counted present is listed separately, weakest overall attendance first, with a link that drafts an email to all of them."
+        }),
+
+        ["/Lecturer/Heatmap"] = new("Class heatmap", new[]
+        {
+            "The whole register as one picture: a row per student, a column per session, ordered with the strongest attendance at the top.",
+            "A pale column is a session most of the class missed \u2014 worth knowing whether something clashed that day. The pale band along the bottom is the group below the requirement.",
+            "Click any row to open that student."
+        }),
+
         ["/Lecturer/StudentDetail"] = new("Student detail", new[]
         {
             "Everything recorded for one student: each session, how it was captured, when, and by whom, plus every query they have raised.",
@@ -78,7 +98,8 @@ public static class PageHelpCatalogue
 
         ["/Lecturer/Sessions"] = new("Sessions", new[]
         {
-            "Add a session for a lecture, then open check-in to put a six-character code on screen for a set number of minutes.",
+            "Add a session for a lecture, then open check-in. Project the code with the Display button: students either type it or scan the QR code with their phone camera.",
+            "The code changes every 30 seconds and the QR changes with it, so a code passed to somebody off campus is stale before they can use it.",
             "Only one session can accept check-ins at a time. Opening a second one closes the first.",
             "Mark register opens that session so you can set each student by hand."
         }),

@@ -51,6 +51,28 @@ public static class AttendanceMessages
         return (subject, body);
     }
 
+    /// <summary>Addressed to everyone not counted present at one particular lecture.</summary>
+    public static (string Subject, string Body) ForMissedSession(string courseCode, DateOnly sessionDate,
+        string topic, int count)
+    {
+        var subject = $"{courseCode} — {sessionDate:d MMMM yyyy} attendance";
+
+        var about = string.IsNullOrWhiteSpace(topic)
+            ? $"the {courseCode} lecture on {sessionDate:dddd d MMMM}"
+            : $"the {courseCode} lecture on {sessionDate:dddd d MMMM} ({topic})";
+
+        var body =
+            "Hi everyone,\n\n" +
+            $"The register shows you as not present at {about}. Everyone is in BCC.\n\n" +
+            "If that is wrong — you signed the sheet, or the check-in code did not go through — raise a query " +
+            "on the attendance register for that session and I will check it against the record.\n\n" +
+            "If it is right, no reply is needed. You can see where the missed session leaves you against the " +
+            "attendance requirement on your own dashboard.\n\n" +
+            "Regards\n";
+
+        return (subject, body);
+    }
+
     private static string FirstName(string displayName)
     {
         var trimmed = displayName.Trim();

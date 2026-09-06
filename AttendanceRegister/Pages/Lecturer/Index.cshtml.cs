@@ -2,6 +2,7 @@ using System.Globalization;
 using AttendanceRegister.Infrastructure;
 using AttendanceRegister.Models.ViewModels;
 using AttendanceRegister.Services.Abstractions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace AttendanceRegister.Pages.Lecturer;
@@ -33,20 +34,36 @@ public class IndexModel : PageModel
     public List<GridLine> GridLines { get; private set; } = new();
     public List<Tick> Ticks { get; private set; } = new();
 
+    /// <summary>Built from the same per-session figures the bars use, so the two cannot disagree.</summary>
+    public CumulativeChart Cumulative { get; private set; } = new();
+
     public string AverageText => Overview.AverageAttendance.ToString("0.#", CultureInfo.InvariantCulture);
+
+    /// <summary>Direction of travel over the last five sessions, or nothing when it is flat.</summary>
+    public string DriftText
+    {
+        get
+        {
+            var drift = Cumulative.RecentDrift;
+            if (Math.Abs(drift) < 0.1) { return string.Empty; }
+            var direction = drift > 0 ? "up" : "down";
+            return $", {direction} {Math.Abs(drift).ToString("0.#", CultureInfo.InvariantCulture)} points over the last five sessions";
+        }
+    }
 
     /// <summary>Pre-built draft addressed to everyone under the requirement.</summary>
     public string BulkEmailHref { get; private set; } = string.Empty;
 
     public bool BulkEmailTruncated { get; private set; }
 
-    public sealed record Bar(double X, double Y, double Width, double Height, string Tip, bool BelowThreshold);
+    public sealed record Bar(double X, double Y, double Width, double Height, string Tip, bool BelowThreshold, int LectureId, string Url);
     public sealed record GridLine(double Y, string Label);
     public sealed record Tick(double X, string Label);
 
     public async Task OnGetAsync()
     {
         Overview = await _analytics.GetOverviewAsync(HttpContext.RequestAborted);
+        Cumulative = CumulativeChart.From(Overview.LectureStats, Overview.MinimumPercent);
 
         if (Overview.AtRiskStudents.Count > 0)
         {
@@ -94,8 +111,10 @@ public class IndexModel : PageModel
                 Math.Round(y, 2),
                 Math.Round(barWidth, 2),
                 Math.Round(PadTop + plotHeight - y, 2),
-                $"{stat.SessionDate:d MMM yyyy}: {stat.PresentCount} of {stat.Enrolled} ({stat.Percentage:0.#}%)",
-                stat.Percentage < Overview.MinimumPercent));
+                $"{stat.SessionDate:d MMM yyyy}: {stat.PresentCount} of {stat.Enrolled} ({stat.Percentage:0.#}%) — open this session",
+                stat.Percentage < Overview.MinimumPercent,
+                stat.LectureId,
+                Url.Page("/Lecturer/Session", new { lectureId = stat.LectureId }) ?? string.Empty));
 
             if (i % labelEvery == 0)
             {

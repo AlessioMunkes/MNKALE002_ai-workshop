@@ -1,3 +1,5 @@
+Alessio Munkes MNKALE002
+
 # INF3003W Attendance Register
 
 An ASP.NET Core 8 Razor Pages application that replaces the printed class list,
@@ -23,7 +25,7 @@ upload does. Delete the `.db` file to start over.
 | Lecturer | `lecturer@uct.ac.za` | `Lecturer#2026` |
 | Student | any student number from the seed file, e.g. `STDNUM001` | `Student#2026` |
 
-Change these in `appsettings.json` before anyone else uses the system.
+Change these in `appsettings.json` 
 
 ## What it does
 

@@ -16,41 +16,47 @@
     </div>
 </header>
 
+@* Each figure goes where the figure came from. A number on a dashboard that
+   cannot be opened is a dead end. *@
 <div class="grid grid--4">
-    <div class="stat">
+    <a class="stat stat--link" asp-page="/Lecturer/Students">
         <p class="stat__label">Enrolled</p>
         <p class="stat__value">@overview.Enrolled</p>
-    </div>
-    <div class="stat">
+        <p class="stat__go">See the class list</p>
+    </a>
+
+    <a class="stat stat--link" asp-page="/Lecturer/Sessions">
         <p class="stat__label">Sessions captured</p>
         <p class="stat__value">@overview.SessionsHeld</p>
-    </div>
-    <div class="stat">
+        <p class="stat__go">Manage sessions</p>
+    </a>
+
+    <a class="stat stat--link" href="#trend">
         <p class="stat__label">
             Class average
             <span class="hint" tabindex="0" data-tip="The mean of each session's attendance rate, across captured sessions only.">?</span>
         </p>
         <p class="stat__value">@(Model.AverageText)<span class="stat__unit">&percnt;</span></p>
-    </div>
-    <div class="stat @(overview.OpenQueries > 0 ? "is-attention" : "")">
+        <p class="stat__go">See the trend</p>
+    </a>
+
+    <a class="stat stat--link @(overview.OpenQueries > 0 ? "is-attention" : "")"
+       asp-page="/Lecturer/Queries" asp-route-filter="@(overview.OpenQueries > 0 ? "Open" : null)">
         <p class="stat__label">Open queries</p>
         <p class="stat__value">@overview.OpenQueries</p>
-        @if (overview.OpenQueries > 0)
-        {
-            <a class="link" asp-page="/Lecturer/Queries">Review them</a>
-        }
-    </div>
+        <p class="stat__go">@(overview.OpenQueries > 0 ? "Review them" : "All queries")</p>
+    </a>
 </div>
 
 <section class="card">
     <div class="card__head">
         <h2 class="card__title">Attendance per session</h2>
-        <p class="muted">Dashed line marks the @overview.MinimumPercent&percnt; requirement.</p>
+        <p class="muted">Dashed line marks the @overview.MinimumPercent&percnt; requirement. Click a bar to open that session.</p>
     </div>
 
     @if (Model.Bars.Count == 0)
     {
-        <p class="empty">No sessions have been captured yet. <a asp-page="/Lecturer/Import">Upload a register</a> or open check-in for a session.</p>
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "sessions", Title = "No sessions captured", Message = "Attendance per session appears here once the first register is in.", ActionText = "Upload a register", ActionPage = "/Lecturer/Import" })" />
     }
     else
     {
@@ -78,10 +84,11 @@
                 <g class="chart__bars">
                     @foreach (var bar in Model.Bars)
                     {
-                        <rect class="chart__bar @(bar.BelowThreshold ? "is-low" : "")"
-                              x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height" rx="2">
+                        <a class="chart__bar-link" href="@bar.Url">
                             <title>@bar.Tip</title>
-                        </rect>
+                            <rect class="chart__bar @(bar.BelowThreshold ? "is-low" : "")"
+                                  x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height" rx="2"></rect>
+                        </a>
                     }
                 </g>
 
@@ -98,6 +105,40 @@
     }
 </section>
 
+<section class="card" id="trend">
+    <div class="card__head">
+        <div>
+            <h2 class="card__title">Where the class is heading</h2>
+            <p class="muted">Attendance as it has accumulated over the term, not session by session.</p>
+        </div>
+        @if (Model.Cumulative.HasData)
+        {
+            <p class="muted">
+                Running total <strong>@Model.Cumulative.Final.ToString("0.#")&percnt;</strong>@(Model.DriftText)
+            </p>
+        }
+    </div>
+
+    @if (!Model.Cumulative.HasData)
+    {
+        <p class="empty">At least two captured sessions are needed before a trend means anything.</p>
+    }
+    else
+    {
+        <partial name="_CumulativeChart" model="Model.Cumulative" />
+    }
+</section>
+
+<section class="card">
+    <div class="card__head">
+        <div>
+            <h2 class="card__title">The whole register at once</h2>
+            <p class="muted">Every student, every session, ordered by attendance.</p>
+        </div>
+        <a class="btn btn--ghost btn--sm" asp-page="/Lecturer/Heatmap">Open the heatmap</a>
+    </div>
+</section>
+
 <section class="card">
     <div class="card__head">
         <h2 class="card__title">Below the requirement</h2>
@@ -112,7 +153,7 @@
 
     @if (overview.AtRiskStudents.Count == 0)
     {
-        <p class="empty">Every student is above @overview.MinimumPercent&percnt;.</p>
+        <partial name="_EmptyState" model="@(new EmptyState { Glyph = "students", Title = "Everybody is above the requirement", Message = "Nobody is currently at risk of losing DP. Students who fall below will be listed here, worst first." })" />
     }
     else
     {

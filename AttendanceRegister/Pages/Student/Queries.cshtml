@@ -49,7 +49,7 @@
 
         @if (Model.Queries.Count == 0)
         {
-            <p class="empty">You have not raised any queries.</p>
+            <partial name="_EmptyState" model="@(new EmptyState { Glyph = "queries", Title = "No queries", Message = "If a session is recorded wrongly, raise a query on the left and the outcome will show up here." })" />
         }
         else
         {

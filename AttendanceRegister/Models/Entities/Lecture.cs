@@ -1,8 +1,12 @@
 namespace AttendanceRegister.Models.Entities;
 
 /// <summary>
-/// One timetabled session. Owns the rules for its own self check-in window,
-/// so no page or service has to reimplement them.
+/// One timetabled session. Owns the rules for its own self check-in window.
+///
+/// Since codes rotate, this holds the <em>secret</em> the codes are derived
+/// from, not a code. It is stored in the column that used to hold the literal
+/// code, so an existing database needs no migration — the meaning of the column
+/// changed, its shape did not.
 /// </summary>
 public sealed class Lecture
 {
@@ -16,8 +20,13 @@ public sealed class Lecture
     public string Topic { get; private set; } = string.Empty;
     public string Venue { get; private set; } = string.Empty;
 
-    /// <summary>Code students type in to record their own attendance. Null when closed.</summary>
-    public string? CheckInCode { get; private set; }
+    /// <summary>
+    /// Seed for the rotating code. Never shown to anyone: the projector shows a
+    /// code derived from this and the clock, which is a different string every
+    /// thirty seconds.
+    /// </summary>
+    public string? CheckInSecret { get; private set; }
+
     public DateTime? CheckInClosesAtUtc { get; private set; }
 
     public ICollection<AttendanceRecord> AttendanceRecords { get; private set; } = new List<AttendanceRecord>();
@@ -33,7 +42,7 @@ public sealed class Lecture
     }
 
     public bool IsCheckInOpen =>
-        CheckInCode is not null &&
+        CheckInSecret is not null &&
         CheckInClosesAtUtc.HasValue &&
         CheckInClosesAtUtc.Value > DateTime.UtcNow;
 
@@ -46,26 +55,26 @@ public sealed class Lecture
         Venue = venue.Trim();
     }
 
-    /// <summary>Opens a time-boxed check-in window and returns the generated code.</summary>
-    public string OpenCheckIn(TimeSpan duration, Func<string> codeFactory)
+    /// <summary>Opens a time-boxed check-in window seeded with the given secret.</summary>
+    public void OpenCheckIn(TimeSpan duration, string secret)
     {
         if (duration <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(duration), "The check-in window must be longer than zero minutes.");
         }
 
-        CheckInCode = codeFactory();
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            throw new ArgumentException("A check-in window needs a secret to derive codes from.", nameof(secret));
+        }
+
+        CheckInSecret = secret;
         CheckInClosesAtUtc = DateTime.UtcNow.Add(duration);
-        return CheckInCode;
     }
 
     public void CloseCheckIn()
     {
-        CheckInCode = null;
+        CheckInSecret = null;
         CheckInClosesAtUtc = null;
     }
-
-    public bool CodeMatches(string candidate) =>
-        CheckInCode is not null &&
-        string.Equals(CheckInCode, candidate.Trim(), StringComparison.OrdinalIgnoreCase);
 }

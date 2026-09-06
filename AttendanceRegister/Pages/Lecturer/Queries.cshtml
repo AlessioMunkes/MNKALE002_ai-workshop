@@ -64,7 +64,7 @@
 
 @if (Model.Queries.Count == 0)
 {
-    <p class="empty">Nothing to show here.</p>
+    <partial name="_EmptyState" model="@(new EmptyState { Glyph = "queries", Title = "No queries here", Message = "Students raise queries when a session looks wrong. You can also record one above if a student writes to you directly." })" />
 }
 else
 {
